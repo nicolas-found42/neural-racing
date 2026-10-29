@@ -4,3 +4,4 @@ __pycache__/
 *.npz
 transcript.txt
 .DS_Store
+.ruff_cache/
