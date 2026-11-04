@@ -86,6 +86,9 @@ fn arrow_keys_drive_the_car_in_manual_mode() {
     save(&mut harness, "manual");
 }
 
+/// Train mode is driven by real trainer threads, so the generation counters in
+/// `train.png` depend on how many generations landed before the capture; the
+/// committed image is one such frame, not a byte-stable golden file.
 #[test]
 fn live_training_streams_generations_into_the_dashboard() {
     let mut harness = harness();
