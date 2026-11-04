@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/neural_racing_core",
+    "crates/neural_racing_ml",
+    "crates/neural_racing_engine",
+    "crates/neural_racing_gui",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
