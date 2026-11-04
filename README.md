@@ -41,22 +41,28 @@ a snapshot of the policy that the hero car is currently driving.
 ## Train
 
 The shipped policy came from one base run and two short robustness passes, all
-seeded and reproducible:
-
-| Stage | Flags | Effect |
-| --- | --- | --- |
-| Base | `--generations 2600 --eval-tracks 192 --seed 90210` | learns to drive; 100% of the 192 evaluation tracks by the end |
-| Robustness | `--generations 900 --eval-tracks 1000 --resume models/best.bin` | selection pressure on 1000 tracks instead of 192 |
-| Final | `--generations 250 --eval-tracks 2000 --resume models/best.bin` | with `SPEED_EXCESS_PENALTY = 1.2` (the value in the source; the first two stages used 0.45), which trades about 12% mean speed for margin |
+seeded and deterministic:
 
 ```sh
-cargo run --release -p neural_racing_engine --bin train -- \
-    --generations 2600 --workers 17 --episodes-per-worker 3 \
-    --eval-every 50 --eval-tracks 192 --seed 90210 --out models/policy.bin
+# 1. base run — learns to drive, 100% of its evaluation tracks by the end
+train --generations 2600 --episodes-per-worker 3 --eval-every 50 --eval-tracks 192 \
+      --seed 90210 --out models/policy.bin
+
+# 2. robustness pass — selection against 1000 tracks instead of 192
+train --generations 900 --resume models/best.bin --out models/policy.bin \
+      --episodes-per-worker 3 --eval-every 30 --eval-tracks 1000 --seed 90210
+
+# 3. final pass — with SPEED_EXCESS_PENALTY = 1.2 (the value in the source);
+#    stages 1-2 ran with 0.45. Trades ~12% mean speed for margin.
+train --generations 250 --resume models/best.bin --out models/policy.bin \
+      --episodes-per-worker 3 --eval-every 50 --eval-tracks 2000 --seed 90210
 ```
 
-The base stage takes about sixteen minutes on 17 cores; the two passes add roughly
-twelve minutes together.
+(`--workers` is the core count; every stage above ran with 17.) The base stage takes
+about sixteen minutes on 17 cores, the two passes roughly twelve minutes together.
+Stage 2 is what fixed the last stubborn crashes: `models/best.bin` is chosen by
+finishes over 1000 tracks, so selection pressure matches the acceptance criterion
+instead of 192 samples.
 
 Each generation races one car per worker on its own freshly generated track, with
 independent exploration noise on the two actions. Gradients from all rollouts are
@@ -76,8 +82,12 @@ cargo run --release -p neural_racing_engine --bin verify -- \
 every one of them completes two laps without leaving the road. The shipped policy
 finished **15000/15000** tracks, drawn as 1000-track batches from the fifteen seed
 bases between `20000000` and `210000000`, none of which overlap the training or
-evaluation seeds. Zero crashes, zero timeouts, mean speed 237 px/s. A further 2000
-tracks from `220000000` also finished clean.
+evaluation seeds. Zero crashes, zero timeouts, mean speed 237 px/s.
+
+That sweep was also the selection set when the shipped snapshot was chosen, so it is
+optimistic by construction. A blinded confirmation on five bases no earlier run had
+touched (`230000000`–`270000000`) finished **5000/5000** with zero crashes and zero
+timeouts.
 
 ## How the tracks are generated
 
