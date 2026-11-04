@@ -1,8 +1,6 @@
 //! Dashboard widgets: gauges, telemetry bars and the brain view.
 
-use egui::{
-    Align2, Color32, FontId, Pos2, Rect, Response, RichText, Sense, Stroke, Ui, Vec2,
-};
+use egui::{Align2, Color32, FontId, Pos2, Rect, Response, RichText, Sense, Stroke, Ui, Vec2};
 
 use crate::palette as colors;
 
@@ -69,13 +67,7 @@ pub fn gauge(
 }
 
 /// Bar that grows left (negative) or right (positive) from the centre.
-pub fn centered_gauge(
-    ui: &mut Ui,
-    label: &str,
-    value: f64,
-    color: Color32,
-    readout: &str,
-) {
+pub fn centered_gauge(ui: &mut Ui, label: &str, value: f64, color: Color32, readout: &str) {
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 26.0), Sense::hover());
     let painter = ui.painter();
@@ -109,7 +101,10 @@ pub fn centered_gauge(
         painter.rect_filled(fill, 3, color);
     }
     painter.rect_filled(
-        Rect::from_min_size(Pos2::new(centre - 0.5, bar.top()), Vec2::new(1.0, bar.height())),
+        Rect::from_min_size(
+            Pos2::new(centre - 0.5, bar.top()),
+            Vec2::new(1.0, bar.height()),
+        ),
         0,
         colors::PANEL_EDGE,
     );
@@ -143,9 +138,7 @@ pub fn brain(ui: &mut Ui, activations: &[Vec<f32>]) -> Response {
         let x = plot.left() + index as f32 * (column_width + gap);
         let count = layer.len().max(1);
         let cell = plot.height() / count as f32;
-        let peak = layer
-            .iter()
-            .fold(0f32, |acc, value| acc.max(value.abs()));
+        let peak = layer.iter().fold(0f32, |acc, value| acc.max(value.abs()));
         for (unit, value) in layer.iter().enumerate() {
             let top = plot.top() + unit as f32 * cell;
             let bar = Rect::from_min_size(

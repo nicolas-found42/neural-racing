@@ -24,7 +24,10 @@ fn main() {
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
-        let mut value = || iter.next().unwrap_or_else(|| panic!("{flag} needs a value"));
+        let mut value = || {
+            iter.next()
+                .unwrap_or_else(|| panic!("{flag} needs a value"))
+        };
         match flag.as_str() {
             "--model" => args.model = PathBuf::from(value()),
             "--tracks" => args.tracks = value().parse().expect("integer"),
@@ -41,6 +44,10 @@ fn main() {
 
     let policy = Policy::load(&args.model)
         .unwrap_or_else(|error| panic!("load {}: {error}", args.model.display()));
+    if policy.obs_dim != neural_racing_core::OBS_DIM {
+        eprintln!("This policy uses the old observation/physics format. Train a fresh model for the current vehicle dynamics.");
+        std::process::exit(2);
+    }
     println!(
         "{} ({} parameters) on {} fresh tracks, {} laps each",
         args.model.display(),

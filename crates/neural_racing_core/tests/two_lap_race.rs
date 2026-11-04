@@ -1,28 +1,14 @@
+mod common;
 use neural_racing_core::{
-    wrap_angle, Action, Env, StepOutcome, Track, CHECKPOINT_COUNT, DEFAULT_LAPS,
-    FAST_LAP_BONUS, LAP_BONUS, MAX_STEPS,
+    Action, Env, StepOutcome, Track, CHECKPOINT_COUNT, DEFAULT_LAPS, FAST_LAP_BONUS, LAP_BONUS,
+    MAX_STEPS,
 };
 
 /// Pure-pursuit driver that brakes for the curvature ahead: proves the
 /// generated tracks and the lap/checkpoint rules are physically completable
 /// without a learned policy.
 fn drive(env: &mut Env, cruise: f64) -> StepOutcome {
-    let position = env.position();
-    let hit = env.track.nearest_on_centerline(position);
-    let lookahead = (env.speed * 0.30).clamp(26.0, 70.0);
-    let target = env.track.arc_point(hit.arc + lookahead);
-    let toward = (target - position).angle();
-    let steer = (wrap_angle(toward - env.heading) * 2.2).clamp(-1.0, 1.0);
-
-    let mut sharpest: f64 = 0.02;
-    for step in 1..=4 {
-        let near = env.track.arc_tangent(hit.arc + step as f64 * 22.0);
-        let far = env.track.arc_tangent(hit.arc + (step + 1) as f64 * 22.0);
-        sharpest = sharpest.max(wrap_angle(far.angle() - near.angle()).abs());
-    }
-    let corner_speed = (52.0 / sharpest).min(cruise);
-    let throttle = if env.speed > corner_speed { -0.55 } else { 0.8 };
-    env.step(Action { steer, throttle })
+    env.step(common::pursuit(env, cruise))
 }
 
 #[test]
@@ -143,5 +129,8 @@ fn leaving_the_road_ends_the_race_immediately() {
 fn episode_budget_covers_two_slow_laps() {
     // Two laps at 115 px/s need ~50 s of simulated time, well under MAX_STEPS.
     let budget_seconds = MAX_STEPS as f64 * neural_racing_core::DECISION_DT;
-    assert!(budget_seconds >= 55.0, "budget {budget_seconds}s is too tight");
+    assert!(
+        budget_seconds >= 55.0,
+        "budget {budget_seconds}s is too tight"
+    );
 }

@@ -1,4 +1,4 @@
-//! Neural Racing: watch or drive a car on seeded random tracks, and see the
+//! Neural Racing: watch or drive real circuits or procedural courses, and see the
 //! trained policy's activations while it races.
 
 use std::path::PathBuf;
@@ -9,14 +9,26 @@ fn main() -> eframe::Result<()> {
     let mut policy: Option<PathBuf> = None;
     let mut seed: Option<u64> = None;
     let mut mode: Option<Mode> = None;
+    let mut circuit = None;
     let mut speed: Option<f32> = None;
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
-        let mut value = || iter.next().unwrap_or_else(|| panic!("{flag} needs a value"));
+        let mut value = || {
+            iter.next()
+                .unwrap_or_else(|| panic!("{flag} needs a value"))
+        };
         match flag.as_str() {
+            "--track" => circuit = Some(value()),
             "--policy" => policy = Some(PathBuf::from(value())),
             "--seed" => seed = Some(value().parse().expect("integer")),
-            "--speed" => speed = Some(value().parse().expect("speed multiplier")),
+            "--speed" => {
+                let text = value();
+                speed = Some(if text == "max" {
+                    f32::INFINITY
+                } else {
+                    text.parse().expect("speed multiplier or max")
+                });
+            }
             "--mode" => {
                 mode = Some(match value().as_str() {
                     "watch" | "ai" => Mode::Watch,
@@ -27,7 +39,7 @@ fn main() -> eframe::Result<()> {
             }
             "--help" | "-h" => {
                 println!(
-                    "neural-racing [--policy PATH] [--seed N] [--mode watch|manual|train] [--speed X]"
+                    "neural-racing [--policy PATH] [--seed N] [--mode watch|manual|train] [--speed X|max] [--track monza|silverstone|red-bull-ring|random]"
                 );
                 return Ok(());
             }
@@ -35,12 +47,18 @@ fn main() -> eframe::Result<()> {
         }
     }
 
-    let (loaded, path) = find_policy(policy);
+    // Learning always starts fresh. Disk policies are only an explicit legacy
+    // watch-mode option; the live session has no persistence path.
+    let (loaded, path) = if mode == Some(Mode::Watch) {
+        find_policy(policy)
+    } else {
+        (None, PathBuf::new())
+    };
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1264.0, 900.0])
             .with_min_inner_size([1000.0, 720.0])
-            .with_title("Neural Racing — random tracks, learnt driver"),
+            .with_title("Neural Racing — watch the model learn"),
         ..Default::default()
     };
     eframe::run_native(
@@ -50,6 +68,16 @@ fn main() -> eframe::Result<()> {
             App::install_style(&cc.egui_ctx);
             let mut application = App::new(loaded, path);
             application.configure(seed, mode, speed);
+            if let Some(name) = circuit.as_deref() {
+                let selected = neural_racing_core::Circuit::ALL
+                    .into_iter()
+                    .find(|c| c.slug() == name);
+                assert!(
+                    selected.is_some() || name == "random",
+                    "unknown track {name}"
+                );
+                application.select_circuit(selected);
+            }
             Ok(Box::new(application))
         }),
     )

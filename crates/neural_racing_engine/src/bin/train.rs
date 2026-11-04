@@ -49,9 +49,7 @@ fn parse_args() -> Args {
         match flag.as_str() {
             "--generations" => args.generations = value().parse().expect("integer"),
             "--workers" => args.workers = value().parse().expect("integer"),
-            "--episodes-per-worker" => {
-                args.episodes_per_worker = value().parse().expect("integer")
-            }
+            "--episodes-per-worker" => args.episodes_per_worker = value().parse().expect("integer"),
             "--laps" => args.laps = value().parse().expect("integer"),
             "--seed" => args.seed = value().parse().expect("integer"),
             "--out" => args.out = PathBuf::from(value()),
@@ -97,11 +95,16 @@ fn main() {
         Some(path) => {
             let policy = Policy::load(path)
                 .unwrap_or_else(|error| panic!("load {}: {error}", path.display()));
+            assert_eq!(
+                policy.obs_dim,
+                neural_racing_core::OBS_DIM,
+                "old observation/physics format: start fresh for the current vehicle dynamics"
+            );
             println!(
                 "resumed {} ({} parameters, {} layers)",
                 path.display(),
                 policy.num_params(),
-                policy.hidden_dims.len()
+                policy.blocks + 1
             );
             Trainer::with_policy(config, policy)
         }
@@ -127,13 +130,13 @@ fn main() {
     }
 
     println!(
-        "training {} generations | {} workers x {} episodes | {} laps | sigma {:.2} -> {:.2}",
+        "training {} generations | {} workers x {} episodes | {} laps | normalized {}x{} actor-critic",
         args.generations,
         args.workers,
         args.episodes_per_worker,
         args.laps,
-        neural_racing_ml::SIGMA_START,
-        neural_racing_ml::SIGMA_END
+        neural_racing_ml::DEFAULT_BLOCKS,
+        neural_racing_ml::DEFAULT_WIDTH
     );
 
     let mut best: Option<((usize, f64, f64), i64)> = None;
@@ -143,7 +146,7 @@ fn main() {
     for _ in 0..args.generations {
         let stats = trainer.train_generation();
         println!(
-            "gen {:4} | eps {:3} | finished {:2} crash {:2} timeout {:2} | cp {:4.1} | dist {:6.0} | rew {:7.2} | kl {:.4} scale {:.2} | gnorm {:5.2} | {:5.2}s",
+            "gen {:4} | eps {:3} | finished {:2} crash {:2} timeout {:2} | cp {:4.1} | dist {:6.0} | rew {:7.2} | kl {:.4} scale {:.2} | ent {:5.2} | gnorm {:5.2} | {:5.2}s",
             stats.generation,
             stats.episodes,
             stats.finished,
@@ -154,13 +157,14 @@ fn main() {
             stats.mean_reward,
             stats.update.policy_kl,
             stats.update.update_scale,
+            stats.entropy,
             stats.update.gradient_norm,
             stats.elapsed_seconds,
         );
         if let Some(log) = log.as_mut() {
             writeln!(
                 log,
-                "{{\"event\":\"generation\",\"generation\":{},\"episodes\":{},\"finished\":{},\"crashes\":{},\"timeouts\":{},\"mean_checkpoints\":{:.4},\"best_distance\":{:.4},\"mean_reward\":{:.4},\"mean_speed\":{:.4},\"sigma\":{:.5},\"policy_kl\":{:.8},\"update_scale\":{:.4},\"gradient_norm\":{:.6},\"rows\":{},\"seconds\":{:.3}}}",
+                "{{\"event\":\"generation\",\"generation\":{},\"episodes\":{},\"finished\":{},\"crashes\":{},\"timeouts\":{},\"mean_checkpoints\":{:.4},\"best_distance\":{:.4},\"mean_reward\":{:.4},\"mean_speed\":{:.4},\"entropy\":{:.5},\"policy_kl\":{:.8},\"update_scale\":{:.4},\"gradient_norm\":{:.6},\"rows\":{},\"seconds\":{:.3}}}",
                 stats.generation,
                 stats.episodes,
                 stats.finished,
@@ -170,7 +174,7 @@ fn main() {
                 stats.best_distance,
                 stats.mean_reward,
                 stats.mean_speed,
-                stats.sigma,
+                stats.entropy,
                 stats.update.policy_kl,
                 stats.update.update_scale,
                 stats.update.gradient_norm,

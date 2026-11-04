@@ -5,9 +5,10 @@ use std::time::Instant;
 use neural_racing_core::{
     Action, Env, Rng, Track, CHECKPOINT_COUNT, DEFAULT_LAPS, MAX_STEPS, OBS_DIM,
 };
-use neural_racing_ml::{discounted_returns, sigma_at, update, Adam, Batch, Policy, UpdateStats, LR};
-
-pub const MAX_GRAD_NORM: f64 = 2.5;
+use neural_racing_ml::{
+    update, Adam, Batch, Policy, Sample, Trajectory, UpdateStats, DEFAULT_BLOCKS, DEFAULT_WIDTH,
+    LR, MAX_GRAD_NORM,
+};
 
 #[derive(Clone, Debug)]
 pub struct RaceConfig {
@@ -64,24 +65,39 @@ pub struct Rollout {
     pub batch: Batch,
 }
 
-/// Runs one race on `track` with exploration noise `sigma`, recording the
-/// observations, noise samples and returns the update consumes.
-pub fn rollout(policy: &Policy, track: Track, sigma: f64, laps: i32, rng: &mut Rng) -> Rollout {
-    let track_seed = 0;
-    rollout_inner(policy, track, track_seed, sigma, laps, rng)
+fn decide(policy: &Policy, obs: &[f32], rng: &mut Rng, explore: bool) -> Sample {
+    if explore {
+        policy.sample(obs, rng)
+    } else {
+        let action = policy.mean_action(obs);
+        Sample {
+            action,
+            z: [0.0; 2],
+            mean: [0.0; 2],
+            log_std: [0.0; 2],
+            eps: [0.0; 2],
+            logp: 0.0,
+            value: policy.value(obs),
+        }
+    }
+}
+
+/// Runs one race on `track`, sampling from the policy and recording the rows
+/// the estimator consumes. Finite differences are not involved anywhere.
+pub fn rollout(policy: &Policy, track: Track, laps: i32, rng: &mut Rng) -> Rollout {
+    rollout_inner(policy, track, 0, laps, rng, true)
 }
 
 fn rollout_inner(
     policy: &Policy,
     track: Track,
     track_seed: u64,
-    sigma: f64,
     laps: i32,
     rng: &mut Rng,
+    explore: bool,
 ) -> Rollout {
     let mut env = Env::new(track, laps);
-    let mut obs_log: Vec<f32> = Vec::with_capacity(MAX_STEPS as usize * OBS_DIM);
-    let mut eps_log: Vec<f32> = Vec::with_capacity(MAX_STEPS as usize * policy.act_dim);
+    let mut trajectory = Trajectory::default();
     let mut rewards: Vec<f32> = Vec::with_capacity(MAX_STEPS as usize);
     let mut min_wall = f64::INFINITY;
     let mut speed_sum = 0.0;
@@ -92,13 +108,15 @@ fn rollout_inner(
     let mut info;
 
     loop {
-        let (action, eps) = policy.act(&env.obs, sigma, rng);
-        obs_log.extend_from_slice(&env.obs);
-        eps_log.extend_from_slice(&eps);
+        let sample = decide(policy, &env.obs, rng, explore);
+        trajectory.push(&env.obs, &sample, 0.0);
         let outcome = env.step(Action {
-            steer: f64::from(action[0]),
-            throttle: f64::from(action[1]),
+            steer: f64::from(sample.action[0]),
+            throttle: f64::from(sample.action[1]),
         });
+        if let Some(slot) = trajectory.rewards.last_mut() {
+            *slot = outcome.reward as f32;
+        }
         rewards.push(outcome.reward as f32);
         min_wall = min_wall.min(env.min_ray);
         speed_sum += env.speed;
@@ -114,12 +132,8 @@ fn rollout_inner(
         }
     }
 
-    let returns = discounted_returns(&rewards);
     let mut batch = Batch::new(policy.obs_dim, policy.act_dim);
-    batch.rows = steps as usize;
-    batch.obs = obs_log;
-    batch.eps = eps_log;
-    batch.returns = returns;
+    batch.push_trajectory(&trajectory, true);
 
     Rollout {
         report: EpisodeReport {
@@ -139,10 +153,10 @@ fn rollout_inner(
     }
 }
 
-/// One deterministic race with `sigma = 0`; used for evaluation and the UI.
+/// One deterministic race using the mean action; used for evaluation and the UI.
 pub fn deterministic_episode(policy: &Policy, track: Track, laps: i32) -> EpisodeReport {
     let mut rng = Rng::new(0);
-    rollout_inner(policy, track, 0, 0.0, laps, &mut rng).report
+    rollout_inner(policy, track, 0, laps, &mut rng, false).report
 }
 
 #[derive(Clone, Debug)]
@@ -196,7 +210,7 @@ pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> Eva
         });
     }
     let count = rows.len() as f64;
-    EvalReport {
+    let report = EvalReport {
         finished: rows.iter().filter(|row| row.finished).count(),
         crashed: rows.iter().filter(|row| row.off_track).count(),
         timed_out: rows
@@ -210,7 +224,8 @@ pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> Eva
             .map(|row| row.min_wall)
             .fold(f64::INFINITY, f64::min),
         rows,
-    }
+    };
+    report
 }
 
 #[derive(Clone, Debug)]
@@ -224,7 +239,7 @@ pub struct GenerationStats {
     pub best_distance: f64,
     pub mean_reward: f64,
     pub mean_speed: f64,
-    pub sigma: f64,
+    pub entropy: f64,
     pub update: UpdateStats,
     pub rows: usize,
     pub elapsed_seconds: f64,
@@ -240,12 +255,7 @@ pub struct Trainer {
 
 impl Trainer {
     pub fn new(config: RaceConfig) -> Self {
-        let policy = Policy::new(
-            OBS_DIM,
-            &neural_racing_ml::DEFAULT_HIDDEN_DIMS,
-            2,
-            config.seed,
-        );
+        let policy = Policy::new(OBS_DIM, DEFAULT_WIDTH, DEFAULT_BLOCKS, config.seed);
         let adam = Adam::new(policy.params(), LR, (0.9, 0.999), 1e-8, MAX_GRAD_NORM);
         Self {
             config,
@@ -272,7 +282,7 @@ impl Trainer {
     pub fn train_generation(&mut self) -> GenerationStats {
         let started = Instant::now();
         let generation = self.generation + 1;
-        let sigma = sigma_at(self.episodes_seen + 1);
+
         let policy = &self.policy;
         let config = &self.config;
 
@@ -304,9 +314,9 @@ impl Trainer {
                                 policy,
                                 track,
                                 track_seed,
-                                sigma,
                                 config.laps,
                                 &mut rng,
+                                true,
                             ));
                         }
                         rollouts
@@ -323,30 +333,37 @@ impl Trainer {
         let mut reports = Vec::with_capacity(config.workers * config.episodes_per_worker);
         for mut rollouts in results {
             for item in rollouts.drain(..) {
-                batch.extend(&item.batch);
+                for row in 0..item.batch.rows {
+                    let width = item.batch.obs_dim;
+                    let dim = item.batch.act_dim;
+                    batch.push_row(
+                        &item.batch.obs[row * width..(row + 1) * width],
+                        &item.batch.z[row * dim..(row + 1) * dim],
+                        item.batch.old_logp[row],
+                        item.batch.values[row],
+                        item.batch.returns[row],
+                        item.batch.advantages[row],
+                    );
+                }
                 reports.push(item.report);
             }
         }
 
         let rows = batch.rows;
-        let stats = update(
-            &mut self.policy,
-            &mut self.adam,
-            &batch,
-            sigma,
-            Some(sigma),
-            None,
-        )
-        .unwrap_or_else(|error| panic!("generation {generation} update failed: {error}"));
+        let stats = update(&mut self.policy, &mut self.adam, &batch)
+            .unwrap_or_else(|error| panic!("generation {generation} update failed: {error}"));
 
         self.generation = generation;
         self.episodes_seen += reports.len() as i64;
 
         let episodes = reports.len() as f64;
-        let mean_checkpoints =
-            reports.iter().map(|r| f64::from(r.checkpoints)).sum::<f64>() / episodes;
+        let mean_checkpoints = reports
+            .iter()
+            .map(|r| f64::from(r.checkpoints))
+            .sum::<f64>()
+            / episodes;
         let mean_speed = reports.iter().map(|r| r.mean_speed).sum::<f64>() / episodes;
-        GenerationStats {
+        let result = GenerationStats {
             generation,
             episodes: reports.len(),
             finished: reports.iter().filter(|r| r.finished()).count(),
@@ -356,17 +373,15 @@ impl Trainer {
                 .filter(|r| !r.finished() && !r.off_track)
                 .count(),
             mean_checkpoints,
-            best_distance: reports
-                .iter()
-                .map(|r| r.distance)
-                .fold(0.0, f64::max),
+            best_distance: reports.iter().map(|r| r.distance).fold(0.0, f64::max),
             mean_reward: reports.iter().map(|r| r.reward).sum::<f64>() / episodes,
             mean_speed,
-            sigma,
+            entropy: stats.entropy,
             update: stats,
             rows,
             elapsed_seconds: started.elapsed().as_secs_f64(),
-        }
+        };
+        result
     }
 }
 
@@ -379,3 +394,6 @@ pub fn score(report: &EvalReport) -> (usize, f64, f64) {
 pub fn gates_per_lap() -> i32 {
     CHECKPOINT_COUNT as i32
 }
+
+/// Incremental, in-memory learning used by the live desktop session.
+pub mod live;

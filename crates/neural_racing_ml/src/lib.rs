@@ -1,15 +1,19 @@
-//! Residual MLP driving policy with a hand-written forward/backward pass.
+//! Normalized residual actor-critic for the racing brain.
 //!
-//! No autograd dependency: the network is a few thousand flat `f32` arrays, so
-//! a gradient check costs nothing and a build needs nothing but rustc.
+//! No autograd dependency: the network is a few flat `f32` arrays, so a
+//! gradient check costs nothing and a build needs nothing but rustc.
 
 mod adam;
+mod matrix;
 mod policy;
 mod train;
 
 pub use adam::{Adam, AdamMoments};
-pub use policy::{Policy, ForwardCache, DEFAULT_HIDDEN_DIMS, LEAKY_SLOPE};
+pub use policy::{
+    gaussian_log_prob, log_std_from_raw, ForwardCache, Policy, Sample, ACTION_DIM, DEFAULT_BLOCKS,
+    DEFAULT_WIDTH, LEAKY_SLOPE, LOG_STD_MAX, LOG_STD_MIN,
+};
 pub use train::{
-    discounted_returns, sigma_at, update, Batch, UpdateStats, GAMMA, LR, MAX_BACKTRACKS,
-    MAX_POLICY_KL, SIGMA_DECAY, SIGMA_END, SIGMA_START,
+    update, Batch, Trajectory, UpdateStats, CLIP_RANGE, ENTROPY_COEF, EPOCHS, GAE_LAMBDA, GAMMA,
+    LR, MAX_GRAD_NORM, MINIBATCH, VALUE_COEF,
 };

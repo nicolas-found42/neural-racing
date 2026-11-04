@@ -1,6 +1,8 @@
-//! Closed, non-overlapping racetracks built from seeded random geometry.
+//! Closed road geometry shared by real circuits and seeded procedural courses.
 
+use std::collections::HashMap;
 use std::f64::consts::TAU;
+use std::sync::Arc;
 
 use crate::rng::Rng;
 use crate::{
@@ -54,7 +56,9 @@ pub struct Bounds {
     pub max_y: f64,
 }
 
+#[derive(Clone)]
 pub struct Track {
+    pub circuit: Option<crate::Circuit>,
     pub centerline: Vec<Vec2>,
     /// Outer and inner wall polylines, indexed like the centerline.
     pub outer: Vec<Vec2>,
@@ -73,6 +77,123 @@ pub struct Track {
     seg_a: Vec<Vec2>,
     seg_vec: Vec<Vec2>,
     gates: Vec<Gate>,
+    wall_grid: Arc<SegmentGrid>,
+    center_grid: Arc<SegmentGrid>,
+    corner_table: Arc<CornerTable>,
+    /// Braking-distance-aware speed limit sampled along the lap. Built once;
+    /// cloned by reference because every car carries a track.
+    speed_profile: Arc<Vec<f64>>,
+    profile_spacing: f64,
+}
+
+/// A broad phase only: exact segment intersection/projection still decides
+/// every sensor hit. Store segments in all cells touched by their bounding box.
+#[derive(Clone)]
+struct SegmentGrid {
+    cells: HashMap<(i32, i32), Vec<usize>>,
+}
+impl SegmentGrid {
+    fn cell(v: f64) -> i32 {
+        (v / RAY_RANGE).floor() as i32
+    }
+    fn new(starts: &[Vec2], edges: &[Vec2]) -> Self {
+        let mut cells = HashMap::<_, Vec<_>>::new();
+        for (i, (&a, &edge)) in starts.iter().zip(edges).enumerate() {
+            let b = a + edge;
+            for x in Self::cell(a.x.min(b.x))..=Self::cell(a.x.max(b.x)) {
+                for y in Self::cell(a.y.min(b.y))..=Self::cell(a.y.max(b.y)) {
+                    cells.entry((x, y)).or_default().push(i);
+                }
+            }
+        }
+        Self { cells }
+    }
+    fn near(&self, point: Vec2) -> Vec<usize> {
+        let mut result = Vec::new();
+        for x in Self::cell(point.x - RAY_RANGE)..=Self::cell(point.x + RAY_RANGE) {
+            for y in Self::cell(point.y - RAY_RANGE)..=Self::cell(point.y + RAY_RANGE) {
+                if let Some(indices) = self.cells.get(&(x, y)) {
+                    result.extend_from_slice(indices);
+                }
+            }
+        }
+        // Preserve exhaustive traversal's tie-breaking at shared vertices.
+        result.sort_unstable();
+        result.dedup();
+        result
+    }
+}
+
+/// Sample curvature once, then answer braking-preview range minima in O(1).
+/// Two-metre spacing and a three-metre stencil resolve the mapped chicanes.
+#[derive(Default)]
+struct CornerTable {
+    spacing: f64,
+    levels: Vec<Vec<f64>>,
+}
+impl CornerTable {
+    fn build(track: &Track) -> Self {
+        let count = (track.lap_length / (2.0 * crate::UNITS_PER_METRE)).ceil() as usize;
+        let spacing = track.lap_length / count as f64;
+        let stencil = 3.0 * crate::UNITS_PER_METRE;
+        let radii: Vec<_> = (0..count)
+            .map(|i| {
+                let arc = i as f64 * spacing;
+                let a = track.arc_point(arc - stencil);
+                let b = track.arc_point(arc);
+                let c = track.arc_point(arc + stencil);
+                let area2 = ((b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)).abs();
+                if area2 < 1e-9 {
+                    f64::INFINITY
+                } else {
+                    (b - a).norm() * (c - b).norm() * (a - c).norm() / (2.0 * area2)
+                }
+            })
+            .collect();
+        let mut levels = vec![radii];
+        let mut width = 2;
+        while width <= count {
+            let previous = levels.last().unwrap();
+            let half = width / 2;
+            levels.push(
+                (0..=count - width)
+                    .map(|i| previous[i].min(previous[i + half]))
+                    .collect(),
+            );
+            width *= 2;
+        }
+        Self { spacing, levels }
+    }
+    fn range(&self, start: usize, end: usize) -> f64 {
+        if start >= end {
+            return f64::INFINITY;
+        }
+        let power = (end - start).ilog2() as usize;
+        self.levels[power][start].min(self.levels[power][end - (1 << power)])
+    }
+    fn radius_at(&self, arc: f64, lap: f64) -> f64 {
+        let count = self.levels[0].len();
+        let index = (py_mod(arc, lap) / self.spacing).floor() as usize;
+        self.levels[0][index.min(count - 1)]
+    }
+    fn ahead(&self, arc: f64, horizon: f64, lap: f64) -> f64 {
+        if horizon <= 0.0 {
+            return f64::INFINITY;
+        }
+        let count = self.levels[0].len();
+        if horizon >= lap {
+            return self.range(0, count);
+        }
+        let start_arc = py_mod(arc, lap);
+        let start = (start_arc / self.spacing).floor() as usize;
+        let end = ((start_arc + horizon) / self.spacing).ceil() as usize + 1;
+        if end <= count {
+            self.range(start, end)
+        } else {
+            self.range(start, count)
+                .min(self.range(0, (end - count).min(count)))
+        }
+    }
 }
 
 impl Track {
@@ -178,10 +299,10 @@ impl Track {
             }
             .rotated(tilt);
             points.push(center + local);
-            half_width.push(
-                (nominal * width)
-                    .clamp(MIN_WIDTH_FACTOR * BASE_HALF_WIDTH, MAX_WIDTH_FACTOR * BASE_HALF_WIDTH),
-            );
+            half_width.push((nominal * width).clamp(
+                MIN_WIDTH_FACTOR * BASE_HALF_WIDTH,
+                MAX_WIDTH_FACTOR * BASE_HALF_WIDTH,
+            ));
         }
         if rng.next_u32() & 1 == 1 {
             points.reverse();
@@ -201,15 +322,35 @@ impl Track {
     /// start/finish is moved to the straightest part so every race begins with
     /// a stable launch.
     pub fn from_centerline_with_widths(
+        centerline: Vec<Vec2>,
+        half_width: Vec<f64>,
+    ) -> Option<Self> {
+        Self::build(centerline, half_width, None)
+    }
+
+    pub(crate) fn from_circuit_centerline(
+        centerline: Vec<Vec2>,
+        half_width: Vec<f64>,
+        circuit: crate::Circuit,
+    ) -> Option<Self> {
+        Self::build(centerline, half_width, Some(circuit))
+    }
+
+    fn build(
         mut centerline: Vec<Vec2>,
         mut half_width: Vec<f64>,
+        circuit: Option<crate::Circuit>,
     ) -> Option<Self> {
         assert_eq!(
             centerline.len(),
             half_width.len(),
             "one half width per centerline sample"
         );
-        let start_index = flattest_index(&centerline, 14);
+        let start_index = if circuit.is_some() {
+            0
+        } else {
+            flattest_index(&centerline, 14)
+        };
         centerline.rotate_left(start_index);
         half_width.rotate_left(start_index);
         let n = centerline.len();
@@ -236,7 +377,7 @@ impl Track {
             center_cum.push(acc);
             acc += *len;
         }
-        if !(MIN_LAP_LENGTH..=MAX_LAP_LENGTH).contains(&acc) {
+        if circuit.is_none() && !(MIN_LAP_LENGTH..=MAX_LAP_LENGTH).contains(&acc) {
             return None;
         }
         // Every corner must be wide enough for the road running through it, and
@@ -244,11 +385,11 @@ impl Track {
         let radii = curvature_radii(&centerline);
         for (index, radius) in radii.iter().enumerate() {
             let needed = (MIN_CURVATURE_MARGIN * half_width[index]).max(MIN_TURN_RADIUS);
-            if *radius < needed {
+            if circuit.is_none() && *radius < needed {
                 return None;
             }
         }
-        if !clear_of_itself(&centerline, &half_width, &center_cum, acc) {
+        if circuit.is_none() && !clear_of_itself(&centerline, &half_width, &center_cum, acc) {
             return None;
         }
 
@@ -258,10 +399,11 @@ impl Track {
             return None;
         }
         let bounds = bounds_of([&centerline, &outer, &inner]);
-        if bounds.min_x < ARENA_MARGIN
-            || bounds.min_y < ARENA_MARGIN
-            || bounds.max_x > ARENA_WIDTH - ARENA_MARGIN
-            || bounds.max_y > ARENA_HEIGHT - ARENA_MARGIN
+        if circuit.is_none()
+            && (bounds.min_x < ARENA_MARGIN
+                || bounds.min_y < ARENA_MARGIN
+                || bounds.max_x > ARENA_WIDTH - ARENA_MARGIN
+                || bounds.max_y > ARENA_HEIGHT - ARENA_MARGIN)
         {
             return None;
         }
@@ -271,9 +413,12 @@ impl Track {
         let mut seg_vec = closed_edge_vecs(&outer);
         seg_vec.extend(closed_edge_vecs(&inner));
 
+        let wall_grid = Arc::new(SegmentGrid::new(&seg_a, &seg_vec));
+        let center_grid = Arc::new(SegmentGrid::new(&centerline, &center_vec));
         let start = centerline[0];
         let start_heading = center_tangent[0].angle();
         let mut track = Self {
+            circuit,
             centerline,
             outer,
             inner,
@@ -290,9 +435,56 @@ impl Track {
             seg_a,
             seg_vec,
             gates: Vec::new(),
+            wall_grid,
+            center_grid,
+            corner_table: Arc::new(CornerTable::default()),
+            speed_profile: Arc::new(Vec::new()),
+            profile_spacing: 1.0,
         };
         track.gates = track.make_gates();
+        track.corner_table = Arc::new(CornerTable::build(&track));
+        track.build_speed_profile();
         Some(track)
+    }
+
+    /// Builds the cyclic velocity profile by clamping every sample to its
+    /// curvature limit, then propagating the braking limit backwards twice
+    /// around the loop. `v[i] <= sqrt(v[i+1]^2 + 2 a_b ds)`: the car can always
+    /// shed speed in time for the next sample, and the profile never asks for
+    /// more than the tyre can hold.
+    fn build_speed_profile(&mut self) {
+        let count = (self.lap_length / (2.0 * crate::UNITS_PER_METRE)).ceil() as usize;
+        let count = count.max(2);
+        let spacing = self.lap_length / count as f64;
+        let brake = crate::BRAKING_ACCEL * crate::UNITS_PER_METRE;
+        let floor = crate::PROFILE_MIN_SPEED * crate::UNITS_PER_METRE;
+        let mut profile = Vec::with_capacity(count);
+        for index in 0..count {
+            let arc = index as f64 * spacing;
+            let radius = self.corner_table.radius_at(arc, self.lap_length).max(1.0);
+            let corner = (crate::MAX_LATERAL_ACCEL * radius).sqrt();
+            profile.push(corner.clamp(floor, crate::MAX_SPEED));
+        }
+        for _ in 0..2 {
+            for index in (0..count).rev() {
+                let next = profile[(index + 1) % count];
+                let allowed = (next * next + 2.0 * brake * spacing).sqrt();
+                profile[index] = profile[index].min(allowed).max(floor);
+            }
+        }
+        self.speed_profile = Arc::new(profile);
+        self.profile_spacing = spacing;
+    }
+
+    /// Speed the car may travel at `arc` and still brake for every corner
+    /// reachable from here. Units per second.
+    pub fn speed_profile(&self, arc: f64) -> f64 {
+        let profile = &self.speed_profile;
+        if profile.is_empty() {
+            return crate::MAX_SPEED;
+        }
+        let index = (py_mod(arc, self.lap_length) / self.profile_spacing) as usize;
+        profile[index.min(profile.len() - 1)]
     }
 
     pub fn gates(&self) -> &[Gate] {
@@ -304,7 +496,9 @@ impl Track {
         self.half_width
             .iter()
             .copied()
-            .fold((f64::INFINITY, 0.0_f64), |(lo, hi), w| (lo.min(w), hi.max(w)))
+            .fold((f64::INFINITY, 0.0_f64), |(lo, hi), w| {
+                (lo.min(w), hi.max(w))
+            })
     }
 
     /// Point on the centerline at the given arc length.
@@ -328,25 +522,7 @@ impl Track {
     /// Tightest corner radius over the next `horizon` units of road, or
     /// infinity when the road stays straight that far ahead.
     pub fn tightest_corner_ahead(&self, arc: f64, horizon: f64) -> f64 {
-        const STEP: f64 = 30.0;
-        let mut tightest = f64::INFINITY;
-        let mut walked = 0.0;
-        while walked < horizon {
-            let ahead = arc + walked;
-            let a = self.arc_point(ahead - STEP);
-            let b = self.arc_point(ahead);
-            let c = self.arc_point(ahead + STEP);
-            let ab = (b - a).norm();
-            let bc = (c - b).norm();
-            let ca = (a - c).norm();
-            let cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
-            let area2 = cross.abs();
-            if area2 > 1e-9 {
-                tightest = tightest.min(ab * bc * ca / (2.0 * area2));
-            }
-            walked += STEP;
-        }
-        tightest
+        self.corner_table.ahead(arc, horizon, self.lap_length)
     }
 
     /// Tangent (unit vector in the driving direction) at an arc length.
@@ -355,12 +531,30 @@ impl Track {
     }
 
     pub fn nearest_on_centerline(&self, point: Vec2) -> CenterlineHit {
+        let candidates = self.center_grid.near(point);
+        let hit = self.nearest_in(point, candidates.into_iter());
+        // Any segment closer than RAY_RANGE must intersect the queried square.
+        // Outside that guaranteed radius use the exhaustive path (e.g. a
+        // caller probing a point far outside the circuit).
+        if let Some((hit, distance)) = hit {
+            if distance <= RAY_RANGE * RAY_RANGE {
+                return hit;
+            }
+        }
+        self.nearest_in(point, 0..self.centerline.len()).unwrap().0
+    }
+
+    fn nearest_in(
+        &self,
+        point: Vec2,
+        indices: impl Iterator<Item = usize>,
+    ) -> Option<(CenterlineHit, f64)> {
         let mut best_dist = f64::INFINITY;
         let mut best_index = 0;
         let mut best_t = 0.0;
         let mut best_dx = 0.0;
         let mut best_dy = 0.0;
-        for index in 0..self.centerline.len() {
+        for index in indices {
             let start = self.centerline[index];
             let along = self.center_vec[index];
             let apx = point.x - start.x;
@@ -381,13 +575,19 @@ impl Track {
         let tangent = self.center_tangent[best_index];
         let width_here = self.half_width[best_index];
         let width_next = self.half_width[(best_index + 1) % self.half_width.len()];
-        CenterlineHit {
-            segment: best_index,
-            lateral: best_dx * -tangent.y + best_dy * tangent.x,
-            arc: self.center_cum[best_index] + best_t * self.center_len[best_index],
-            half_width: width_here + (width_next - width_here) * best_t,
-            tangent,
+        if !best_dist.is_finite() {
+            return None;
         }
+        Some((
+            CenterlineHit {
+                segment: best_index,
+                lateral: best_dx * -tangent.y + best_dy * tangent.x,
+                arc: self.center_cum[best_index] + best_t * self.center_len[best_index],
+                half_width: width_here + (width_next - width_here) * best_t,
+                tangent,
+            },
+            best_dist,
+        ))
     }
 
     pub fn checkpoint_crossing(&self, index: usize, previous: Vec2, current: Vec2) -> i32 {
@@ -417,11 +617,17 @@ impl Track {
     /// Casts one ray per angle into `out`, which must match `angles` in length.
     pub fn cast_rays_into(&self, origin: Vec2, angles: &[f64], out: &mut [f64]) {
         assert_eq!(angles.len(), out.len(), "one output distance per ray angle");
+        let candidates = self.wall_grid.near(origin);
+        self.cast_candidates(origin, angles, out, &candidates);
+    }
+
+    fn cast_candidates(&self, origin: Vec2, angles: &[f64], out: &mut [f64], candidates: &[usize]) {
         out.fill(RAY_RANGE);
         for (ray, angle) in angles.iter().enumerate() {
             let dx = angle.cos();
             let dy = angle.sin();
-            for (segment, start) in self.seg_a.iter().enumerate() {
+            for &segment in candidates {
+                let start = self.seg_a[segment];
                 let edge = self.seg_vec[segment];
                 let denom = dx * edge.y - dy * edge.x;
                 if denom.abs() <= 1e-9 {
@@ -635,5 +841,41 @@ fn segment_index(cum: &[f64], arc: f64) -> usize {
         cum.len() - 1
     } else {
         clamped as usize
+    }
+}
+
+#[cfg(test)]
+mod spatial_tests {
+    use super::*;
+    #[test]
+    fn accelerated_queries_match_exhaustive_geometry() {
+        let mut tracks: Vec<_> = crate::Circuit::ALL.into_iter().map(|c| c.build()).collect();
+        tracks.push(Track::random(17));
+        let angles: Vec<_> = (0..37).map(|i| i as f64 * TAU / 37.0).collect();
+        for track in tracks {
+            let all: Vec<_> = (0..track.seg_a.len()).collect();
+            for i in 0..200 {
+                let base = track.arc_point(track.lap_length * i as f64 / 199.0);
+                let offset = if i % 5 == 0 { RAY_RANGE * 3.0 } else { 37.0 };
+                let point = base
+                    + Vec2 {
+                        x: (i as f64).sin() * offset,
+                        y: (i as f64).cos() * offset,
+                    };
+                let expected = track
+                    .nearest_in(point, 0..track.centerline.len())
+                    .unwrap()
+                    .0;
+                let actual = track.nearest_on_centerline(point);
+                assert_eq!(actual.segment, expected.segment);
+                assert_eq!(actual.arc, expected.arc);
+                assert_eq!(actual.lateral, expected.lateral);
+                let mut a = vec![0.0; angles.len()];
+                let mut b = a.clone();
+                track.cast_rays_into(point, &angles, &mut a);
+                track.cast_candidates(point, &angles, &mut b, &all);
+                assert_eq!(a, b);
+            }
+        }
     }
 }

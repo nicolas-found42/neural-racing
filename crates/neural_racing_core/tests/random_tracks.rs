@@ -132,7 +132,11 @@ fn checkpoint_crossings_respect_the_local_width() {
     };
     assert_eq!(offset(0.0), 1, "crossing the middle of a gate counts");
     assert_eq!(offset(gate.half_width * 0.9), 1, "the road is drivable");
-    assert_eq!(offset(gate.half_width * 1.1), 0, "outside is not a crossing");
+    assert_eq!(
+        offset(gate.half_width * 1.1),
+        0,
+        "outside is not a crossing"
+    );
 }
 
 #[test]

@@ -1,19 +1,19 @@
 //! The application: modes, controls, dashboard and live training.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
 
 use eframe::App as EframeApp;
 use egui::{Align2, Context, FontId, Key, RichText, Sense, Stroke, Ui, Vec2};
 
+use crate::learning::{Learning, Snapshot};
 use neural_racing_core::{
-    Action, Rng, CHECKPOINT_COUNT, DECISION_DT, DEFAULT_LAPS, MAX_SPEED, MAX_STEER_ANGLE,
-    RAY_RANGE,
+    Action, Circuit, Rng, DECISION_DT, DEFAULT_LAPS, MAX_SPEED, MAX_STEER_ANGLE, RAY_RANGE,
+    UNITS_PER_METRE,
 };
-use neural_racing_engine::{GenerationStats, RaceConfig, Trainer};
-use neural_racing_ml::{Policy, DEFAULT_HIDDEN_DIMS};
+use neural_racing_engine::live::{
+    normalize_speed, LiveTrainer, CAR_COUNT, MAX_REQUESTED_SPEED, STINT_LAPS,
+};
+use neural_racing_ml::{Policy, DEFAULT_BLOCKS, DEFAULT_WIDTH};
 
 use crate::palette as colors;
 use crate::render::{self, View};
@@ -29,24 +29,10 @@ pub enum Mode {
     Train,
 }
 
-enum TrainMsg {
-    Stats(Box<GenerationStats>),
-    Snapshot(Box<Policy>, i64),
-    Failed(String),
-}
-
 struct TrainingSession {
-    receiver: Receiver<TrainMsg>,
-    running: Arc<AtomicBool>,
-    latest: Option<GenerationStats>,
-    snapshot: Option<Policy>,
-    snapshot_generation: i64,
-    hero: RaceView,
-    hero_policy: Option<Policy>,
-    failure: Option<String>,
-    started_at: std::time::Instant,
-    episodes: i64,
-    generations: i64,
+    worker: Learning,
+    latest: Option<Snapshot>,
+    cars: [RaceView; CAR_COUNT],
 }
 
 enum UiAction {
@@ -57,17 +43,20 @@ enum UiAction {
     ToggleRays,
     ToggleTrail,
     SetMode(Mode),
-    ToggleTraining,
-    UsePolicy,
-    ReloadPolicy,
+    Follow(usize),
+    SelectCircuit(Option<Circuit>),
+    ToggleOverview,
 }
 
 pub struct App {
     mode: Mode,
+    circuit: Option<Circuit>,
+    overview: bool,
+    followed: usize,
     policy: Option<Policy>,
-    policy_path: PathBuf,
     race: RaceView,
     speed: f32,
+    maximum_speed: bool,
     paused: bool,
     show_rays: bool,
     show_trail: bool,
@@ -89,7 +78,6 @@ impl App {
         self.frame(&ctx, ui);
     }
 
-
     /// Dark theme and compact spacing, applied to whatever context runs the app.
     pub fn install_style(context: &egui::Context) {
         context.set_theme(egui::Theme::Dark);
@@ -100,13 +88,16 @@ impl App {
         });
     }
 
-    pub fn new(policy: Option<Policy>, policy_path: PathBuf) -> Self {
+    pub fn new(policy: Option<Policy>, _policy_path: PathBuf) -> Self {
         Self {
-            mode: Mode::Watch,
+            mode: Mode::Train,
+            circuit: Some(Circuit::Monza),
+            overview: false,
+            followed: 0,
             policy,
-            policy_path,
-            race: RaceView::new(424_242, DEFAULT_LAPS),
-            speed: 2.0,
+            race: RaceView::on_circuit(Circuit::Monza, DEFAULT_LAPS),
+            speed: 1.0,
+            maximum_speed: false,
             paused: false,
             show_rays: true,
             show_trail: true,
@@ -121,9 +112,11 @@ impl App {
         }
     }
 
-    /// Starts on a caller-chosen track instead of the default seed.
+    /// Selects a seeded procedural course instead of the default real circuit.
     pub fn seed_with(&mut self, seed: u64) {
+        self.circuit = None;
         self.race.reset(seed, DEFAULT_LAPS);
+        self.sync_training_track();
     }
 
     /// Applies launch flags before the first frame.
@@ -132,11 +125,18 @@ impl App {
             self.seed_with(seed);
         }
         if let Some(speed) = speed {
-            self.speed = speed;
+            self.apply(UiAction::SetSpeed(speed));
         }
         if let Some(mode) = mode {
             self.apply(UiAction::SetMode(mode));
         }
+    }
+
+    pub fn select_circuit(&mut self, circuit: Option<Circuit>) {
+        self.circuit = circuit;
+        self.best_lap = None;
+        self.restart(false);
+        self.sync_training_track();
     }
 
     fn next_seed(&mut self) -> u64 {
@@ -148,8 +148,8 @@ impl App {
         self.active_race()
     }
 
-    /// Latest generation the trainer has reported, if training has started.
-    pub fn training_stats(&self) -> Option<&GenerationStats> {
+    /// Latest live training state received from the worker.
+    pub fn training_stats(&self) -> Option<&Snapshot> {
         self.training
             .as_ref()
             .and_then(|session| session.latest.as_ref())
@@ -158,7 +158,7 @@ impl App {
     fn active_race(&self) -> &RaceView {
         if self.mode == Mode::Train {
             if let Some(session) = self.training.as_ref() {
-                return &session.hero;
+                return &session.cars[self.followed];
             }
         }
         &self.race
@@ -170,9 +170,31 @@ impl App {
         } else {
             self.race.track_seed
         };
-        self.race.reset(seed, DEFAULT_LAPS);
+        if let Some(circuit) = self.circuit {
+            if new_track {
+                let index = Circuit::ALL.iter().position(|c| *c == circuit).unwrap();
+                self.circuit = Some(Circuit::ALL[(index + 1) % Circuit::ALL.len()]);
+                self.best_lap = None;
+            }
+            self.race = RaceView::on_circuit(self.circuit.unwrap(), DEFAULT_LAPS);
+        } else {
+            self.race.reset(seed, DEFAULT_LAPS);
+        }
         self.restart_timer = 0.0;
         self.accumulator = 0.0;
+    }
+
+    fn sync_training_track(&mut self) {
+        if let Some(session) = self.training.as_mut() {
+            session.worker.track(self.race.env.track.clone());
+            session.latest = None;
+            for car in &mut session.cars {
+                car.receive(neural_racing_core::Env::new(
+                    self.race.env.track.clone(),
+                    STINT_LAPS,
+                ));
+            }
+        }
     }
 
     fn record_outcome(&mut self) {
@@ -195,137 +217,120 @@ impl App {
 
     fn apply(&mut self, action: UiAction) {
         match action {
-            UiAction::TogglePause => self.paused = !self.paused,
-            UiAction::Restart => self.restart(false),
-            UiAction::NewTrack => self.restart(true),
-            UiAction::SetSpeed(speed) => self.speed = speed,
+            UiAction::SelectCircuit(circuit) => self.select_circuit(circuit),
+            UiAction::ToggleOverview => self.overview = !self.overview,
+            UiAction::TogglePause => {
+                self.paused = !self.paused;
+                if let Some(session) = &self.training {
+                    session
+                        .worker
+                        .running(self.mode == Mode::Train && !self.paused);
+                }
+            }
+            UiAction::Restart => {
+                if self.mode == Mode::Train {
+                    let seed = self.next_seed();
+                    if let Some(session) = &mut self.training {
+                        session.worker.reset(seed);
+                        session.latest = None;
+                        for car in &mut session.cars {
+                            car.env.reset();
+                            car.trail.clear();
+                            car.outcome = None;
+                        }
+                    }
+                } else {
+                    self.restart(false);
+                }
+            }
+            UiAction::NewTrack => {
+                self.restart(true);
+                self.sync_training_track();
+            }
+            UiAction::SetSpeed(speed) => {
+                let requested = normalize_speed(speed as f64);
+                self.maximum_speed = requested.is_infinite();
+                self.speed = if self.maximum_speed {
+                    MAX_REQUESTED_SPEED as f32
+                } else {
+                    requested as f32
+                };
+                if let Some(session) = &self.training {
+                    session.worker.speed(if self.maximum_speed {
+                        f64::INFINITY
+                    } else {
+                        self.speed as f64
+                    });
+                }
+            }
+            UiAction::Follow(index) => self.followed = index.min(CAR_COUNT - 1),
             UiAction::ToggleRays => self.show_rays = !self.show_rays,
             UiAction::ToggleTrail => self.show_trail = !self.show_trail,
             UiAction::SetMode(mode) => {
-                if mode == Mode::Train {
-                    if self.training.is_none() {
-                        self.start_training();
-                    } else if let Some(session) = self.training.as_mut() {
-                        session.running.store(true, Ordering::Relaxed);
+                if mode == Mode::Watch {
+                    if let Some(snapshot) = self.training_stats() {
+                        self.policy = Some((*snapshot.policy).clone());
+                        self.race.env.reset();
+                        self.race.outcome = None;
+                        self.race.trail.clear();
+                        self.race.laps_done = 0;
+                        self.race.lap_times.clear();
+                        self.race.lap_start_step = 0;
                     }
-                } else if let Some(session) = self.training.as_mut() {
-                    session.running.store(false, Ordering::Relaxed);
                 }
                 self.mode = mode;
-            }
-            UiAction::ToggleTraining => {
-                if let Some(session) = self.training.as_mut() {
-                    let running = session.running.load(Ordering::Relaxed);
-                    session.running.store(!running, Ordering::Relaxed);
+                if mode == Mode::Train && self.training.is_none() {
+                    self.start_training();
+                }
+                if let Some(session) = &self.training {
+                    session.worker.running(mode == Mode::Train && !self.paused);
                 }
             }
-            UiAction::UsePolicy => {
-                let snapshot = self
-                    .training
-                    .as_ref()
-                    .and_then(|session| session.snapshot.clone());
-                if let Some(policy) = snapshot {
-                    let generation = self
-                        .training
-                        .as_ref()
-                        .map(|session| session.snapshot_generation)
-                        .unwrap_or(0);
-                    self.status = format!("adopted the policy from generation {generation}");
-                    self.policy = Some(policy);
-                    self.paused = false;
-                    self.mode = Mode::Watch;
-                    if let Some(session) = self.training.as_mut() {
-                        session.running.store(false, Ordering::Relaxed);
-                    }
-                    self.restart(true);
-                }
-            }
-            UiAction::ReloadPolicy => self.reload_policy(),
         }
     }
 
     fn start_training(&mut self) {
-        let workers = std::thread::available_parallelism()
-            .map(|cores| cores.get().saturating_sub(2).max(1))
-            .unwrap_or(4);
-        let mut config = RaceConfig::new(self.next_seed(), workers);
-        config.laps = DEFAULT_LAPS;
-        config.episodes_per_worker = 2;
-        let (sender, receiver) = mpsc::channel();
-        let running = Arc::new(AtomicBool::new(true));
-        let flag = running.clone();
-        let hero = RaceView::new(self.next_seed(), DEFAULT_LAPS);
-        spawn_training(config, sender, flag);
+        let track = self.race.env.track.clone();
+        let seed = self.next_seed();
+        let worker = Learning::start(
+            track.clone(),
+            seed,
+            if self.maximum_speed {
+                f64::INFINITY
+            } else {
+                self.speed as f64
+            },
+        );
+        worker.running(!self.paused && self.mode == Mode::Train);
         self.training = Some(TrainingSession {
-            receiver,
-            running,
+            worker,
             latest: None,
-            snapshot: None,
-            snapshot_generation: 0,
-            hero,
-            hero_policy: None,
-            failure: None,
-            started_at: std::time::Instant::now(),
-            episodes: 0,
-            generations: 0,
+            cars: std::array::from_fn(|_| {
+                let mut car = RaceView::on_circuit(Circuit::Monza, STINT_LAPS);
+                car.receive(neural_racing_core::Env::new(track.clone(), STINT_LAPS));
+                car
+            }),
         });
     }
 
-    fn poll_training(&mut self, dt: f32) {
-        let mut messages = Vec::new();
-        {
-            let Some(session) = self.training.as_ref() else {
-                return;
-            };
-            while let Ok(message) = session.receiver.try_recv() {
-                messages.push(message);
-            }
+    fn poll_training(&mut self) {
+        if self.mode == Mode::Train && self.training.is_none() {
+            self.start_training();
         }
-        let mut reset_hero = false;
-        if let Some(session) = self.training.as_mut() {
-            for message in messages {
-                match message {
-                    TrainMsg::Stats(stats) => {
-                        session.episodes = stats.episodes as i64;
-                        session.generations = stats.generation;
-                        session.latest = Some(*stats);
-                    }
-                    TrainMsg::Snapshot(policy, generation) => {
-                        session.snapshot = Some(*policy);
-                        session.snapshot_generation = generation;
-                        reset_hero = true;
-                    }
-                    TrainMsg::Failed(error) => session.failure = Some(error),
+        if let Some(session) = &mut self.training {
+            if let Some(snapshot) = session.worker.take() {
+                if snapshot.revision != session.worker.revision {
+                    return;
                 }
-            }
-        }
-        if reset_hero {
-            let seed = self.next_seed();
-            if let Some(session) = self.training.as_mut() {
-                session.hero_policy = session.snapshot.clone();
-                session.hero.reset(seed, DEFAULT_LAPS);
-            }
-        }
-        if self.paused {
-            return;
-        }
-        let steps = (dt * DECISIONS_PER_SECOND * 8.0).floor().min(48.0) as usize;
-        let mut ended = false;
-        if let Some(session) = self.training.as_mut() {
-            session.hero_policy = session.snapshot.clone();
-            for _ in 0..steps {
-                if session.hero.advance(session.hero_policy.as_ref(), None)
-                    || session.hero.is_over()
-                {
-                    ended = true;
-                    break;
+                // Acknowledge pause with the worker's exact stopped state.
+                if self.paused && !snapshot.paused {
+                    return;
                 }
-            }
-        }
-        if ended {
-            let seed = self.next_seed();
-            if let Some(session) = self.training.as_mut() {
-                session.hero.reset(seed, DEFAULT_LAPS);
+                for (i, car) in session.cars.iter_mut().enumerate() {
+                    car.receive(snapshot.cars[i].clone());
+                    car.trail = snapshot.trails[i].clone();
+                }
+                session.latest = Some(snapshot);
             }
         }
     }
@@ -342,6 +347,9 @@ impl App {
         }
         if pressed(Key::N) {
             actions.push(UiAction::NewTrack);
+        }
+        if pressed(Key::V) {
+            actions.push(UiAction::ToggleOverview);
         }
         if pressed(Key::T) {
             actions.push(UiAction::ToggleRays);
@@ -398,7 +406,7 @@ impl App {
         if self.race.is_over() {
             self.restart_timer += dt;
             if self.restart_timer > 1.4 {
-                self.restart(true);
+                self.restart(false);
             }
             return;
         }
@@ -412,9 +420,10 @@ impl App {
         } else {
             DECISIONS_PER_SECOND * self.speed
         };
-        self.accumulator += dt * rate;
-        let mut budget = self.accumulator.floor().min(60.0);
+        self.accumulator = (self.accumulator + dt * rate).min((rate * 0.05).max(1.0));
+        let mut budget = self.accumulator.floor();
         self.accumulator -= budget;
+        let started = std::time::Instant::now();
         while budget > 0.0 {
             let ended = self.race.advance(self.policy.as_ref(), manual);
             budget -= 1.0;
@@ -422,22 +431,8 @@ impl App {
                 self.record_outcome();
                 break;
             }
-        }
-    }
-
-    fn reload_policy(&mut self) {
-        match Policy::load(&self.policy_path) {
-            Ok(policy) => {
-                self.status = format!(
-                    "loaded {} ({} parameters)",
-                    self.policy_path.display(),
-                    policy.num_params()
-                );
-                self.policy = Some(policy);
-                self.restart(true);
-            }
-            Err(error) => {
-                self.status = format!("could not load {}: {error}", self.policy_path.display());
+            if started.elapsed() >= std::time::Duration::from_millis(4) {
+                break;
             }
         }
     }
@@ -451,25 +446,29 @@ impl App {
                     .color(colors::TEXT),
             );
             ui.label(
-                RichText::new("random tracks · learnt driver")
+                RichText::new("watch a driver learn")
                     .size(12.0)
                     .color(colors::MUTED),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 for (mode, label) in [
-                    (Mode::Watch, "Watch AI"),
+                    (Mode::Watch, "Watch model"),
                     (Mode::Manual, "Manual"),
-                    (Mode::Train, "Train"),
+                    (Mode::Train, "Learn"),
                 ] {
                     let selected = self.mode == mode;
                     if ui
                         .add(
-                            egui::Button::new(
-                                RichText::new(label)
-                                    .size(13.0)
-                                    .color(if selected { colors::DARK } else { colors::TEXT }),
-                            )
-                            .fill(if selected { colors::ACCENT } else { colors::PANEL })
+                            egui::Button::new(RichText::new(label).size(13.0).color(if selected {
+                                colors::DARK
+                            } else {
+                                colors::TEXT
+                            }))
+                            .fill(if selected {
+                                colors::ACCENT
+                            } else {
+                                colors::PANEL
+                            })
                             .stroke(Stroke::new(1.0, colors::PANEL_EDGE))
                             .corner_radius(14),
                         )
@@ -501,10 +500,18 @@ impl App {
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(
-                    RichText::new(format!("track #{:06X}", race.track_seed & 0xFF_FFFF))
-                        .size(11.0)
-                        .monospace()
-                        .color(colors::MUTED),
+                    RichText::new(
+                        race.env
+                            .track
+                            .circuit
+                            .map(|c| c.name().to_string())
+                            .unwrap_or_else(|| {
+                                format!("track #{:06X}", race.track_seed & 0xFF_FFFF)
+                            }),
+                    )
+                    .size(11.0)
+                    .monospace()
+                    .color(colors::MUTED),
                 );
             });
         });
@@ -512,7 +519,7 @@ impl App {
         widgets::stat_row(
             ui,
             "Lap",
-            &format!("{} / {}", race.laps_done.min(DEFAULT_LAPS), DEFAULT_LAPS),
+            &format!("{} / {}", race.laps_done.min(race.env.laps), race.env.laps),
             colors::TEXT,
         );
         widgets::stat_row(
@@ -544,174 +551,238 @@ impl App {
     }
 
     fn control_section(&self, ui: &mut Ui, actions: &mut Vec<UiAction>) {
+        egui::ComboBox::from_label("Circuit")
+            .selected_text(
+                self.circuit
+                    .map(|c| c.name())
+                    .unwrap_or("Procedural course"),
+            )
+            .show_ui(ui, |ui| {
+                for circuit in Circuit::ALL {
+                    if ui
+                        .selectable_label(self.circuit == Some(circuit), circuit.name())
+                        .clicked()
+                    {
+                        actions.push(UiAction::SelectCircuit(Some(circuit)));
+                    }
+                }
+                if self.mode != Mode::Train
+                    && ui
+                        .selectable_label(self.circuit.is_none(), "Procedural course")
+                        .clicked()
+                {
+                    actions.push(UiAction::SelectCircuit(None));
+                }
+            });
         ui.horizontal(|ui| {
-            let label = if self.paused { "Resume" } else { "Pause" };
             if ui
-                .add(
-                    egui::Button::new(RichText::new(label).size(14.0))
-                        .fill(colors::ACCENT.gamma_multiply(0.25))
-                        .min_size(Vec2::new(112.0, 32.0)),
-                )
+                .button(if self.paused { "Resume" } else { "Pause" })
                 .clicked()
             {
                 actions.push(UiAction::TogglePause);
             }
             if ui
-                .add(
-                    egui::Button::new(RichText::new("Restart").size(14.0))
-                        .min_size(Vec2::new(104.0, 32.0)),
-                )
+                .button(if self.mode == Mode::Train {
+                    "Start over"
+                } else {
+                    "Restart"
+                })
                 .clicked()
             {
                 actions.push(UiAction::Restart);
             }
-            if ui
-                .add(
-                    egui::Button::new(RichText::new("New track").size(14.0))
-                        .min_size(Vec2::new(112.0, 32.0)),
-                )
-                .clicked()
-            {
+            if ui.button("Next circuit").clicked() {
                 actions.push(UiAction::NewTrack);
             }
         });
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Time").size(12.0).color(colors::MUTED));
-            for speed in [1.0f32, 2.0, 4.0, 8.0] {
-                let selected = (self.speed - speed).abs() < f32::EPSILON;
-                if ui
-                    .add(
-                        egui::Button::new(
-                            RichText::new(format!("{speed:.0}×"))
-                                .size(12.0)
-                                .color(if selected { colors::DARK } else { colors::TEXT }),
-                        )
-                        .fill(if selected { colors::ACCENT } else { colors::PANEL })
-                        .min_size(Vec2::new(38.0, 24.0)),
-                    )
-                    .clicked()
-                {
-                    actions.push(UiAction::SetSpeed(speed));
-                }
-            }
+        ui.add_enabled_ui(self.mode != Mode::Manual, |ui| {
+            let mut speed = self.speed;
             if ui
-                .selectable_label(self.show_rays, RichText::new("Rays").size(12.0))
-                .clicked()
+                .add(
+                    egui::Slider::new(&mut speed, 0.25..=MAX_REQUESTED_SPEED as f32)
+                        .logarithmic(true)
+                        .text("× speed")
+                        .max_decimals(2),
+                )
+                .changed()
             {
+                actions.push(UiAction::SetSpeed(speed));
+            }
+            ui.horizontal(|ui| {
+                if ui.small_button("1× real time").clicked() {
+                    actions.push(UiAction::SetSpeed(1.0));
+                }
+                if self.mode == Mode::Train && ui.selectable_label(self.maximum_speed, "Max")
+                    .on_hover_text("Run training as fast as available compute permits. Cars remain live; achieved speed is measured.")
+                    .clicked() {
+                    actions.push(UiAction::SetSpeed(if self.maximum_speed { self.speed } else { f32::INFINITY }));
+                }
+                let achieved = self.training_stats().map_or(0.0, |s| s.achieved_speed);
+                if self.mode == Mode::Train {
+                    ui.label(
+                        RichText::new(format!("{achieved:.1}× achieved")).color(colors::ACCENT),
+                    );
+                }
+            });
+        });
+        if self.mode == Mode::Train {
+            ui.horizontal(|ui| {
+                ui.label("Follow car");
+                for i in 0..CAR_COUNT {
+                    if ui
+                        .selectable_label(self.followed == i, format!("{}", i + 1))
+                        .clicked()
+                    {
+                        actions.push(UiAction::Follow(i));
+                    }
+                }
+            });
+        }
+        ui.horizontal(|ui| {
+            if ui.selectable_label(self.overview, "Overview (V)").clicked() {
+                actions.push(UiAction::ToggleOverview);
+            }
+            if ui.selectable_label(self.show_rays, "Rays").clicked() {
                 actions.push(UiAction::ToggleRays);
             }
-            if ui
-                .selectable_label(self.show_trail, RichText::new("Trail").size(12.0))
-                .clicked()
-            {
+            if ui.selectable_label(self.show_trail, "Trail").clicked() {
                 actions.push(UiAction::ToggleTrail);
             }
         });
     }
 
-    fn training_section(&self, ui: &mut Ui, actions: &mut Vec<UiAction>) {
-        let Some(session) = self.training.as_ref() else {
-            ui.label(RichText::new("Training is not running.").size(12.0));
+    fn training_section(&self, ui: &mut Ui) {
+        let Some(snapshot) = self.training_stats() else {
+            ui.label("Starting fresh model…");
             return;
         };
-        let running = session.running.load(Ordering::Relaxed);
-        ui.horizontal(|ui| {
-            if ui
-                .add(
-                    egui::Button::new(
-                        RichText::new(if running {
-                            "Pause training"
-                        } else {
-                            "Resume training"
-                        })
-                        .size(13.0),
-                    )
-                    .fill(colors::ACCENT.gamma_multiply(0.22))
-                    .min_size(Vec2::new(152.0, 30.0)),
-                )
-                .clicked()
-            {
-                actions.push(UiAction::ToggleTraining);
-            }
-            if ui
-                .add_enabled(
-                    session.snapshot.is_some(),
-                    egui::Button::new(RichText::new("Use this policy").size(13.0))
-                        .min_size(Vec2::new(134.0, 30.0)),
-                )
-                .clicked()
-            {
-                actions.push(UiAction::UsePolicy);
-            }
-        });
-
-        if let Some(error) = &session.failure {
-            ui.label(RichText::new(error).size(12.0).color(colors::BAD));
+        if let Some(error) = &snapshot.error {
+            ui.colored_label(colors::BAD, error);
         }
-
+        let stats = &snapshot.stats[LiveTrainer::circuit_index(self.circuit)];
         widgets::stat_row(
             ui,
-            "Generation",
-            &format!("{}", session.generations),
+            "Attempts · this circuit",
+            &stats.attempts.to_string(),
             colors::TEXT,
+        );
+        widgets::stat_row(ui, "Completed laps", &stats.laps.to_string(), colors::GOOD);
+        widgets::stat_row(
+            ui,
+            "Five-lap goals",
+            &stats.completed_stints.to_string(),
+            colors::GOOD,
         );
         widgets::stat_row(
             ui,
-            "Episodes",
-            &format!("{}", session.episodes),
-            colors::TEXT,
+            "Best consecutive laps",
+            &format!("{} / {STINT_LAPS}", stats.best_streak),
+            colors::GOOD,
         );
-        if let Some(stats) = &session.latest {
-            let ratio = stats.finished as f64 / stats.episodes.max(1) as f64;
+        widgets::stat_row(
+            ui,
+            "Best lap",
+            &stats.best_lap.map_or("—".into(), |v| format!("{v:.2}s")),
+            colors::GOOD,
+        );
+        widgets::stat_row(
+            ui,
+            "Model updates · all circuits",
+            &snapshot.updates.to_string(),
+            colors::MUTED,
+        );
+        if let Some(update) = snapshot.last_update {
             widgets::stat_row(
                 ui,
-                "Last generation",
-                &format!("{} / {} finished", stats.finished, stats.episodes),
-                if ratio > 0.5 { colors::GOOD } else { colors::WARN },
-            );
-            widgets::gauge(
-                ui,
-                "Mean checkpoints",
-                stats.mean_checkpoints,
-                0.0,
-                f64::from(DEFAULT_LAPS * CHECKPOINT_COUNT as i32),
-                colors::ACCENT,
-                &format!("{:.1}", stats.mean_checkpoints),
-            );
-            widgets::gauge(
-                ui,
-                "Mean speed",
-                stats.mean_speed,
-                0.0,
-                MAX_SPEED,
-                colors::GOOD,
-                &format!("{:.0} px/s", stats.mean_speed),
-            );
-            widgets::stat_row(
-                ui,
-                "KL · update scale",
-                &format!(
-                    "{:.4} · {:.2}",
-                    stats.update.policy_kl, stats.update.update_scale
-                ),
-                colors::MUTED,
+                "Policy KL · last update",
+                &format!("{:.4}", update.policy_kl),
+                if update.policy_kl < 0.02 {
+                    colors::GOOD
+                } else {
+                    colors::WARN
+                },
             );
             widgets::stat_row(
                 ui,
                 "Exploration σ",
-                &format!("{:.2}", stats.sigma),
+                &format!("{:.2}", update.entropy.exp()),
+                colors::ACCENT,
+            );
+            widgets::stat_row(
+                ui,
+                "Value loss",
+                &format!("{:.3}", update.value_loss),
+                colors::MUTED,
+            );
+            widgets::stat_row(
+                ui,
+                "Explained variance",
+                &format!("{:+.2}", update.explained_variance),
+                if update.explained_variance > 0.3 {
+                    colors::GOOD
+                } else {
+                    colors::WARN
+                },
+            );
+            widgets::stat_row(
+                ui,
+                "Gradient norm",
+                &format!("{:.2}", update.gradient_norm),
                 colors::MUTED,
             );
         }
-        ui.add_space(4.0);
         ui.label(
-            RichText::new(format!(
-                "{} generations in {:.0}s · snapshot every 4",
-                session.generations,
-                session.started_at.elapsed().as_secs_f32()
-            ))
-            .size(11.0)
-            .color(colors::MUTED),
+            RichText::new("Distance reached per attempt")
+                .size(12.0)
+                .color(colors::MUTED),
+        );
+        let (rect, _) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 92.0), Sense::hover());
+        let p = ui.painter_at(rect);
+        p.rect_filled(rect, 4, colors::DARK);
+        let plot = rect.shrink2(Vec2::new(12.0, 14.0));
+        for fraction in [0.0, 0.5, 1.0] {
+            let y = plot.bottom() - fraction * plot.height();
+            p.line_segment(
+                [egui::pos2(plot.left(), y), egui::pos2(plot.right(), y)],
+                Stroke::new(0.5, colors::PANEL_EDGE),
+            );
+        }
+        let count = stats.history.len();
+        let points: Vec<_> = stats
+            .history
+            .iter()
+            .enumerate()
+            .map(|(i, a)| {
+                egui::pos2(
+                    plot.left() + i as f32 / count.saturating_sub(1).max(1) as f32 * plot.width(),
+                    plot.bottom() - a.progress as f32 * plot.height(),
+                )
+            })
+            .collect();
+        if points.len() > 1 {
+            p.add(egui::Shape::line(points, Stroke::new(1.5, colors::ACCENT)));
+        }
+        p.text(
+            rect.left_top() + Vec2::new(5.0, 2.0),
+            Align2::LEFT_TOP,
+            "100% = five consecutive laps",
+            FontId::proportional(10.0),
+            colors::MUTED,
+        );
+        if count == 0 {
+            p.text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                "First attempts in progress",
+                FontId::proportional(12.0),
+                colors::MUTED,
+            );
+        }
+        ui.label(
+            RichText::new("5-lap goal · 4 practice starts · one shared model")
+                .size(11.0)
+                .color(colors::MUTED),
         );
     }
 
@@ -724,7 +795,7 @@ impl App {
             0.0,
             MAX_SPEED,
             colors::ACCENT,
-            &format!("{:.0} px/s", env.speed),
+            &format!("{:.0} km/h", env.speed / UNITS_PER_METRE * 3.6),
         );
         widgets::centered_gauge(
             ui,
@@ -735,10 +806,10 @@ impl App {
         );
         widgets::centered_gauge(
             ui,
-            "Throttle",
-            env.last_action.throttle,
+            "Throttle / brake",
+            env.pedal,
             colors::WARN,
-            &format!("{:+.2}", env.last_action.throttle),
+            &format!("{:+.2}", env.pedal),
         );
         widgets::gauge(
             ui,
@@ -751,16 +822,16 @@ impl App {
             } else {
                 colors::GOOD
             },
-            &format!("{:.0} px", env.min_ray),
+            &format!("{:.1} m", env.min_ray / UNITS_PER_METRE),
         );
         widgets::gauge(
             ui,
             "Road width",
             env.road_half_width * 2.0,
             30.0,
-            90.0,
+            16.0 * UNITS_PER_METRE,
             colors::ACCENT,
-            &format!("{:.0} px", env.road_half_width * 2.0),
+            &format!("{:.1} m", env.road_half_width * 2.0 / UNITS_PER_METRE),
         );
         widgets::centered_gauge(
             ui,
@@ -769,23 +840,43 @@ impl App {
             colors::ACCENT,
             &format!("{:+.0}°", env.heading_error.to_degrees()),
         );
+        let limit = env.speed_profile.max(1.0);
+        widgets::gauge(
+            ui,
+            "Speed vs braking profile",
+            env.speed / limit,
+            0.0,
+            1.5,
+            if env.speed > limit {
+                colors::BAD
+            } else {
+                colors::GOOD
+            },
+            &format!("{:.2}× profile", env.speed / limit),
+        );
+        widgets::stat_row(
+            ui,
+            "Command jitter · steer / pedal",
+            &format!("{:.3} / {:.3}", env.steer_delta, env.throttle_delta),
+            colors::MUTED,
+        );
     }
 
     fn brain_section(&self, ui: &mut Ui, race: &RaceView, actions: &mut Vec<UiAction>) {
         let policy = match self.mode {
-            Mode::Train => self
-                .training
-                .as_ref()
-                .and_then(|session| session.hero_policy.as_ref()),
+            Mode::Train => self.training.as_ref().and_then(|session| {
+                session
+                    .latest
+                    .as_ref()
+                    .map(|snapshot| snapshot.policy.as_ref())
+            }),
             _ => self.policy.as_ref(),
         };
         let Some(policy) = policy else {
             ui.label(
-                RichText::new(
-                    "No trained policy loaded. Train one, or drop a policy file at models/policy.bin.",
-                )
-                .size(12.0)
-                .color(colors::MUTED),
+                RichText::new("Start learning to create a new driving model.")
+                    .size(12.0)
+                    .color(colors::MUTED),
             );
             if ui
                 .add(
@@ -801,12 +892,14 @@ impl App {
 
         let activations = policy.activations(&race.env.obs);
         widgets::brain(ui, &activations);
-        let outputs = activations.last().cloned().unwrap_or_default();
-        let steer = outputs.first().copied().unwrap_or(0.0).tanh();
-        let throttle = outputs.get(1).copied().unwrap_or(0.0).tanh();
+        // The activation stack ends at the normalized trunk; the mean action and
+        // critic value come from the output head, which it deliberately omits.
+        let action = policy.mean_action(&race.env.obs);
+        let (steer, throttle) = (action[0], action[1]);
+        let value = policy.value(&race.env.obs);
         ui.label(
             RichText::new(format!(
-                "output · steer {steer:+.2} · throttle {throttle:+.2}"
+                "output · steer {steer:+.2} · throttle {throttle:+.2} · value {value:+.2}"
             ))
             .size(11.0)
             .monospace()
@@ -814,14 +907,19 @@ impl App {
         );
     }
 
-    fn session_section(&self, ui: &mut Ui, actions: &mut Vec<UiAction>) {
+    fn session_section(&self, ui: &mut Ui, _actions: &mut Vec<UiAction>) {
         widgets::stat_row(
             ui,
             "Races finished",
             &format!("{}", self.finished),
             colors::GOOD,
         );
-        widgets::stat_row(ui, "Races crashed", &format!("{}", self.crashed), colors::BAD);
+        widgets::stat_row(
+            ui,
+            "Races crashed",
+            &format!("{}", self.crashed),
+            colors::BAD,
+        );
         widgets::stat_row(
             ui,
             "Session best lap",
@@ -831,22 +929,6 @@ impl App {
                 .unwrap_or_else(|| "—".to_string()),
             colors::GOOD,
         );
-        ui.add_space(6.0);
-        ui.label(
-            RichText::new(format!("policy: {}", self.policy_path.display()))
-                .size(10.0)
-                .monospace()
-                .color(colors::MUTED),
-        );
-        if ui
-            .add(
-                egui::Button::new(RichText::new("Reload policy from disk").size(12.0))
-                    .fill(colors::PANEL),
-            )
-            .clicked()
-        {
-            actions.push(UiAction::ReloadPolicy);
-        }
         if !self.status.is_empty() {
             ui.add_space(4.0);
             ui.label(RichText::new(&self.status).size(11.0).color(colors::MUTED));
@@ -865,7 +947,7 @@ impl App {
 
             if self.mode == Mode::Train {
                 widgets::section(ui, "Training");
-                self.training_section(ui, &mut actions);
+                self.training_section(ui);
             }
 
             widgets::section(ui, "Telemetry");
@@ -874,8 +956,10 @@ impl App {
             widgets::section(ui, "Brain");
             self.brain_section(ui, self.active_race(), &mut actions);
 
-            widgets::section(ui, "Session");
-            self.session_section(ui, &mut actions);
+            if self.mode != Mode::Train {
+                widgets::section(ui, "Session");
+                self.session_section(ui, &mut actions);
+            }
         });
         for action in actions {
             self.apply(action);
@@ -889,7 +973,17 @@ impl App {
         let inner = rect.shrink(2.0);
         render::draw_background(&painter, inner);
         let race = self.active_race();
-        let view = View::fit(inner.shrink(6.0), race.env.track.bounds, 34.0);
+        let drawing_speed = if self.mode == Mode::Manual {
+            1.0
+        } else {
+            self.speed
+        };
+        let drawing_env = race.drawing_env(drawing_speed, self.paused);
+        let view = if race.env.track.circuit.is_some() && !self.overview {
+            View::follow(inner.shrink(6.0), drawing_env.position())
+        } else {
+            View::fit(inner.shrink(6.0), race.env.track.bounds, 34.0)
+        };
 
         render::draw_track(&painter, &view, &race.env.track);
         if self.show_trail {
@@ -897,18 +991,77 @@ impl App {
         }
         render::draw_skids(&painter, &view, &race.skids);
         if self.show_rays {
-            render::draw_rays(&painter, &view, &race.env);
+            render::draw_rays(&painter, &view, &drawing_env);
+        }
+        if self.mode == Mode::Train {
+            if let Some(session) = &self.training {
+                for (i, car) in session.cars.iter().enumerate() {
+                    if i == self.followed {
+                        continue;
+                    }
+                    let mut ghost = painter.clone();
+                    ghost.set_opacity(0.40);
+                    render::draw_car(
+                        &ghost,
+                        &view,
+                        &car.drawing_env(drawing_speed, self.paused),
+                        car.env.off_track,
+                    );
+                    painter.text(
+                        view.pos(car.env.position()) + Vec2::new(0.0, -15.0),
+                        Align2::CENTER_BOTTOM,
+                        format!("{}", i + 1),
+                        FontId::monospace(11.0),
+                        colors::MUTED,
+                    );
+                }
+            }
         }
         let crashed = matches!(race.outcome, Some(Outcome::Crashed { .. }));
-        render::draw_car(&painter, &view, &race.env, crashed);
+        render::draw_car(&painter, &view, &drawing_env, crashed);
+        if self.mode == Mode::Train && self.overview {
+            let pos = view.pos(race.env.position());
+            painter.circle_stroke(pos, 5.0, Stroke::new(1.0, colors::CAR));
+            painter.text(
+                pos + Vec2::new(0.0, -8.0),
+                Align2::CENTER_BOTTOM,
+                format!("{}", self.followed + 1),
+                FontId::monospace(11.0),
+                colors::TEXT,
+            );
+        }
 
+        if race.env.track.circuit.is_some() && !self.overview {
+            let map_rect = egui::Rect::from_min_size(
+                inner.right_bottom() - Vec2::new(222.0, 198.0),
+                Vec2::new(210.0, 180.0),
+            );
+            render::draw_minimap(&painter, map_rect, &race.env);
+            if self.mode == Mode::Train {
+                if let Some(session) = &self.training {
+                    let map_view = View::fit(map_rect.shrink(16.0), race.env.track.bounds, 20.0);
+                    for (i, car) in session.cars.iter().enumerate() {
+                        let pos = map_view.pos(car.env.position());
+                        painter.circle_filled(
+                            pos,
+                            3.0,
+                            if i == self.followed {
+                                colors::CAR
+                            } else {
+                                colors::ACCENT
+                            },
+                        );
+                    }
+                }
+            }
+        }
         painter.text(
             inner.left_top() + Vec2::new(12.0, 10.0),
             Align2::LEFT_TOP,
             format!(
                 "LAP {} / {}   {:.1}s",
-                (race.laps_done + 1).min(DEFAULT_LAPS),
-                DEFAULT_LAPS,
+                (race.laps_done + 1).min(race.env.laps),
+                race.env.laps,
                 race.elapsed()
             ),
             FontId::monospace(13.0),
@@ -918,10 +1071,9 @@ impl App {
             inner.right_top() + Vec2::new(-12.0, 10.0),
             Align2::RIGHT_TOP,
             format!(
-                "road {:.0}-{:.0}px · {} samples",
-                race.env.track.width_range().0 * 2.0,
-                race.env.track.width_range().1 * 2.0,
-                race.env.track.centerline.len()
+                "{:.3} km · road {:.1} m",
+                race.env.track.lap_length / UNITS_PER_METRE / 1000.0,
+                race.env.road_half_width * 2.0 / UNITS_PER_METRE
             ),
             FontId::monospace(10.0),
             colors::MUTED,
@@ -936,7 +1088,7 @@ impl App {
             );
         }
 
-        if let Some(outcome) = race.outcome {
+        if let Some(outcome) = race.outcome.filter(|_| self.mode != Mode::Train) {
             let color = match outcome {
                 Outcome::Finished { .. } => colors::GOOD,
                 Outcome::Crashed { .. } => colors::BAD,
@@ -976,44 +1128,6 @@ impl App {
     }
 }
 
-fn spawn_training(config: RaceConfig, sender: Sender<TrainMsg>, running: Arc<AtomicBool>) {
-    std::thread::spawn(move || {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let mut trainer = Trainer::new(config);
-            while running.load(Ordering::Relaxed) {
-                let stats = trainer.train_generation();
-                let generation = stats.generation;
-                if sender.send(TrainMsg::Stats(Box::new(stats))).is_err() {
-                    return;
-                }
-                if generation % 4 == 0
-                    && sender
-                        .send(TrainMsg::Snapshot(
-                            Box::new(trainer.policy.clone()),
-                            generation,
-                        ))
-                        .is_err()
-                {
-                    return;
-                }
-            }
-        }));
-        if result.is_err() {
-            let _ = sender.send(TrainMsg::Failed(
-                "training thread stopped after an error; press Train again".to_string(),
-            ));
-        }
-    });
-}
-
-impl Drop for App {
-    fn drop(&mut self) {
-        if let Some(session) = &self.training {
-            session.running.store(false, Ordering::Relaxed);
-        }
-    }
-}
-
 impl EframeApp for App {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         self.render(ui);
@@ -1025,7 +1139,7 @@ impl App {
         let dt = ctx.input(|input| input.stable_dt).min(0.1);
         self.handle_shortcuts(ctx);
         self.advance_race(&ctx, dt);
-        self.poll_training(dt);
+        self.poll_training();
 
         let panel_frame = egui::Frame::NONE
             .fill(colors::PANEL)
@@ -1049,7 +1163,7 @@ impl App {
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new(
-                            "tab mode · space pause · R restart · N new track · T rays · P trail · 1-4 speed",
+                            "tab mode · space pause · R start over · N next track · V camera · T rays · P trail · 1-4 speed",
                         )
                         .size(11.0)
                         .color(colors::MUTED),
@@ -1104,7 +1218,8 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
         if candidate.exists() {
             if let Ok(policy) = Policy::load(candidate) {
                 if policy.obs_dim == neural_racing_core::OBS_DIM
-                    && policy.hidden_dims.len() == DEFAULT_HIDDEN_DIMS.len()
+                    && policy.width == DEFAULT_WIDTH
+                    && policy.blocks == DEFAULT_BLOCKS
                 {
                     return (Some(policy), candidate.clone());
                 }
@@ -1112,4 +1227,83 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
         }
     }
     (None, candidates[0].clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    fn wait_for(app: &mut App, predicate: impl Fn(&Snapshot) -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            app.poll_training();
+            if app.training_stats().is_some_and(&predicate) {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "app did not receive expected session state"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn speed_slider_and_max_mode_do_not_silently_clamp_to_1000() {
+        let mut app = App::new(None, PathBuf::new());
+        app.configure(None, None, Some(1500.0));
+        assert_eq!(app.speed, 1500.0);
+        assert!(!app.maximum_speed);
+        app.configure(None, None, Some(f32::INFINITY));
+        assert!(app.maximum_speed);
+        assert_eq!(app.speed, MAX_REQUESTED_SPEED as f32);
+        app.configure(None, None, Some(0.25));
+        assert!(!app.maximum_speed);
+        assert_eq!(app.speed, 0.25);
+        app.configure(None, None, Some(f32::NAN));
+        assert_eq!(app.speed, 1.0);
+    }
+
+    #[test]
+    fn controls_target_learning_and_manual_does_not_discard_the_session() {
+        let mut app = App::new(None, PathBuf::new());
+        assert!(app.mode == Mode::Train && app.speed == 1.0 && app.policy.is_none());
+        app.configure(None, None, Some(1000.0));
+        wait_for(&mut app, |s| s.updates >= 2);
+        app.apply(UiAction::TogglePause);
+        wait_for(&mut app, |s| s.paused);
+        let weights = app.training_stats().unwrap().policy.params().to_vec();
+        let decisions = app.training_stats().unwrap().decisions;
+        let old_position = app.race().env.position();
+        app.apply(UiAction::SetMode(Mode::Manual));
+        app.apply(UiAction::Restart);
+        app.apply(UiAction::SetMode(Mode::Train));
+        assert_eq!(app.race().env.position(), old_position);
+        assert_eq!(app.training_stats().unwrap().decisions, decisions);
+        app.apply(UiAction::SelectCircuit(Some(Circuit::Silverstone)));
+        wait_for(&mut app, |s| {
+            s.paused && s.cars[0].track.circuit == Some(Circuit::Silverstone)
+        });
+        assert_eq!(app.training_stats().unwrap().policy.params(), weights);
+        app.apply(UiAction::Follow(3));
+        assert_eq!(
+            app.race().env.position(),
+            app.training_stats().unwrap().cars[3].position()
+        );
+        app.apply(UiAction::Restart);
+        wait_for(&mut app, |s| s.paused && s.decisions == 0);
+        assert_eq!(app.training_stats().unwrap().episodes, 0);
+        assert_ne!(app.training_stats().unwrap().policy.params(), weights);
+        app.apply(UiAction::TogglePause);
+        wait_for(&mut app, |s| s.decisions > 0);
+        app.apply(UiAction::SetMode(Mode::Manual));
+        wait_for(&mut app, |s| s.paused);
+        let stopped = app.training_stats().unwrap().decisions;
+        std::thread::sleep(Duration::from_millis(50));
+        app.poll_training();
+        assert_eq!(app.training_stats().unwrap().decisions, stopped);
+        app.apply(UiAction::SetMode(Mode::Train));
+        wait_for(&mut app, |s| s.decisions > stopped);
+    }
 }
