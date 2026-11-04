@@ -2010,7 +2010,15 @@ dependencies = [
 name = "neural_racing_core"
 version = "0.1.0"
 dependencies = [
+ "neural_racing_diagnostics",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "neural_racing_diagnostics"
+version = "0.1.0"
+dependencies = [
  "serde_json",
 ]
 
@@ -2019,6 +2027,7 @@ name = "neural_racing_engine"
 version = "0.1.0"
 dependencies = [
  "neural_racing_core",
+ "neural_racing_diagnostics",
  "neural_racing_ml",
 ]
 
@@ -2031,6 +2040,7 @@ dependencies = [
  "egui_kittest",
  "image",
  "neural_racing_core",
+ "neural_racing_diagnostics",
  "neural_racing_engine",
  "neural_racing_ml",
 ]
@@ -2040,6 +2050,7 @@ name = "neural_racing_ml"
 version = "0.1.0"
 dependencies = [
  "neural_racing_core",
+ "neural_racing_diagnostics",
 ]
 
 [[package]]

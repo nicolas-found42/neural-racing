@@ -6,6 +6,7 @@ license.workspace = true
 description = "Neural Racing desktop game: random tracks, a live driving AI, and its brain"
 
 [dependencies]
+neural_racing_diagnostics = { path = "../neural_racing_diagnostics" }
 eframe = "0.37"
 egui = "0.37"
 neural_racing_core = { path = "../neural_racing_core" }
