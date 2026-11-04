@@ -38,7 +38,12 @@ fn save(harness: &mut Harness<'static, App>, name: &str) {
 #[test]
 fn ai_keeps_driving_on_a_random_track() {
     let mut harness = harness();
-    harness.state_mut().configure(Some(7_654_321), Some(Mode::Watch), Some(2.0));
+    // Mode first, then the seed: switching mode resets the race, so a seed set
+    // before the switch would be replaced by a fresh random track.
+    harness
+        .state_mut()
+        .configure(None, Some(Mode::Watch), Some(2.0));
+    harness.state_mut().seed_with(7_654_321);
     harness.run_steps(150);
     let race = harness.state().race();
     assert!(!race.is_over(), "the trained AI crashed before the screenshot");
