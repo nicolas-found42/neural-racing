@@ -1,7 +1,6 @@
-.venv/
-__pycache__/
-*.py[cod]
-*.npz
-transcript.txt
+/target/
 .DS_Store
-.ruff_cache/
+.scratch/
+.audit/
+transcript.txt
+/models/best.bin

@@ -1,0 +1,18 @@
+[package]
+name = "neural_racing_engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Parallel rollout and training engine for the racing policy"
+
+[dependencies]
+neural_racing_core = { path = "../neural_racing_core" }
+neural_racing_ml = { path = "../neural_racing_ml" }
+
+[[bin]]
+name = "train"
+path = "src/bin/train.rs"
+
+[[bin]]
+name = "verify"
+path = "src/bin/verify.rs"

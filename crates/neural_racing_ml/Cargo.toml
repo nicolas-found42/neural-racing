@@ -1,0 +1,9 @@
+[package]
+name = "neural_racing_ml"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Residual driving policy, Adam, and the KL-limited policy-gradient update (pure Rust)"
+
+[dependencies]
+neural_racing_core = { path = "../neural_racing_core" }
