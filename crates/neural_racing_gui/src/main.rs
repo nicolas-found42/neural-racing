@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use neural_racing_gui::{app::find_policy, App, Mode};
 
 fn main() -> eframe::Result<()> {
+    let _diagnostics = neural_racing_diagnostics::init("gui");
     let mut policy: Option<PathBuf> = None;
     let mut seed: Option<u64> = None;
     let mut mode: Option<Mode> = None;
@@ -61,7 +62,7 @@ fn main() -> eframe::Result<()> {
             .with_title("Neural Racing — watch the model learn"),
         ..Default::default()
     };
-    eframe::run_native(
+    let result = eframe::run_native(
         "Neural Racing",
         options,
         Box::new(move |cc| {
@@ -80,5 +81,11 @@ fn main() -> eframe::Result<()> {
             }
             Ok(Box::new(application))
         }),
-    )
+    );
+    neural_racing_diagnostics::emit!(
+        "gui_exited",
+        0,
+        neural_racing_diagnostics::json!({"ok":result.is_ok()})
+    );
+    result
 }

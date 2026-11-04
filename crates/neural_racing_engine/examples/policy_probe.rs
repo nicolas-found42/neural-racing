@@ -46,6 +46,7 @@ fn rollout(
 }
 
 fn main() {
+    let _diagnostics = neural_racing_diagnostics::init("policy_probe");
     let path = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "models/policy.bin".into());

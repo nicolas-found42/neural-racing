@@ -1,7 +1,8 @@
 //! Four actual training cars, advanced in fixed physics decisions. No display,
-//! wall clock, threads or persistence: scheduling belongs to the caller.
-
+//! scheduling threads: scheduling belongs to the caller; diagnostics are best effort.
+use neural_racing_diagnostics::{emit, json};
 use std::collections::VecDeque;
+use std::time::Instant;
 
 use neural_racing_core::{Action, Circuit, Env, Rng, Track, DECISION_DT, OBS_DIM, UNITS_PER_METRE};
 use neural_racing_ml::{
@@ -65,6 +66,12 @@ pub struct CircuitStats {
 }
 
 pub struct LiveTrainer {
+    pub diagnostic_id: u64,
+    diagnostic_epoch: u64,
+    diagnostic_counts: [u64; 4],
+    diagnostic_rollbacks: u64,
+    diagnostic_last_progress: Instant,
+    diagnostic_history: [VecDeque<[f64; 6]>; CAR_COUNT],
     pub policy: Policy,
     pub cars: [Env; CAR_COUNT],
     pub stats: [CircuitStats; 4],
@@ -100,7 +107,22 @@ impl LiveTrainer {
             1e-8,
             crate::MAX_GRAD_NORM,
         );
+        let diagnostic_id = neural_racing_diagnostics::operation();
+        emit!(
+            "live_started",
+            diagnostic_id,
+            json!({"parent":neural_racing_diagnostics::current_operation(),
+            "seed":seed,"track":crate::diagnostics::track(&track),"cars":CAR_COUNT,"laps":STINT_LAPS,
+            "decision_dt":DECISION_DT,"min_update_rows":MIN_UPDATE_ROWS,"max_update_rounds":UPDATE_ROUNDS,
+            "lr":LR,"obs_dim":OBS_DIM,"parameters":policy.num_params()})
+        );
         Self {
+            diagnostic_id,
+            diagnostic_epoch: 0,
+            diagnostic_counts: [0; 4],
+            diagnostic_rollbacks: 0,
+            diagnostic_last_progress: Instant::now(),
+            diagnostic_history: std::array::from_fn(|_| VecDeque::with_capacity(8)),
             policy,
             optimizer,
             cars: Self::practice_cars(&track),
@@ -147,6 +169,17 @@ impl LiveTrainer {
     }
     /// Keep the model and Adam state, but discard unfinished on-policy samples.
     pub fn select_track(&mut self, track: Track) {
+        self.diagnostic_epoch += 1;
+        emit!(
+            "live_track_changed",
+            self.diagnostic_id,
+            json!({"epoch":self.diagnostic_epoch,
+            "track":crate::diagnostics::track(&track),"updates":self.updates,"decisions":self.decisions,
+            "discarded_rows":self.batch.rows + self.trajectories.iter().map(|t|t.rows).sum::<usize>()})
+        );
+        for history in &mut self.diagnostic_history {
+            history.clear();
+        }
         self.track = track.clone();
         self.best_progress = 0.0;
         self.best_params = None;
@@ -164,11 +197,42 @@ impl LiveTrainer {
 
     /// One decision for each car. All four use the same policy version. The
     /// attempt-based update boundary and sample cap are independent of wall-clock speed and frames.
-
     pub fn step(&mut self) -> Result<(), &'static str> {
+        let _context = neural_racing_diagnostics::context(self.diagnostic_id);
+        let result = self.step_inner();
+        if let Err(reason) = result {
+            emit!(
+                "live_error",
+                self.diagnostic_id,
+                json!({"reason":reason,"epoch":self.diagnostic_epoch,
+                "updates":self.updates,"decisions":self.decisions,"batch_rows":self.batch.rows,
+                "cars":self.cars.iter().map(crate::diagnostics::state).collect::<Vec<_>>(),
+                "recent_decisions":self.diagnostic_history})
+            );
+        }
+        if self.diagnostic_last_progress.elapsed().as_secs() >= 10 {
+            self.diagnostic_progress();
+            self.diagnostic_last_progress = Instant::now();
+        }
+        result
+    }
+
+    pub fn diagnostic_progress(&self) {
+        emit!(
+            "live_progress",
+            self.diagnostic_id,
+            json!({"epoch":self.diagnostic_epoch,"updates":self.updates,
+            "decisions":self.decisions,"attempts":self.episodes,"end_counts":self.diagnostic_counts,
+            "rollbacks":self.diagnostic_rollbacks,"restores":self.restores,
+            "cars":self.cars.iter().map(crate::diagnostics::state).collect::<Vec<_>>()})
+        );
+    }
+
+    fn step_inner(&mut self) -> Result<(), &'static str> {
         for i in 0..CAR_COUNT {
             if self.last_end[i].take().is_some() {
                 self.cars[i].reset();
+                self.diagnostic_history[i].clear();
                 self.progress_mark[i] = 0.0;
                 self.progress_step[i] = 0;
                 self.lap_steps[i] = 0;
@@ -179,6 +243,9 @@ impl LiveTrainer {
                 let obs = &self.cars[i].obs;
                 self.policy.sample(obs, &mut self.rngs[i])
             };
+            if !sample.action.iter().all(|v| v.is_finite()) || !sample.value.is_finite() {
+                return Err("non-finite inference");
+            }
             let action = Action {
                 steer: f64::from(sample.action[0]),
                 throttle: f64::from(sample.action[1]),
@@ -186,6 +253,24 @@ impl LiveTrainer {
             let observation = self.cars[i].obs;
             let car = &mut self.cars[i];
             let outcome = car.step(action);
+            if !outcome.reward.is_finite() || !car.obs.iter().all(|v| v.is_finite()) {
+                return Err("non-finite environment");
+            }
+            // Eight sparse decision samples, in simulation time, only for terminal/anomaly context.
+            if neural_racing_diagnostics::enabled() && (car.steps % 20 == 1 || outcome.done) {
+                let history = &mut self.diagnostic_history[i];
+                if history.len() == 8 {
+                    history.pop_front();
+                }
+                history.push_back([
+                    car.steps as f64,
+                    car.speed,
+                    car.distance,
+                    car.lateral_offset,
+                    action.steer,
+                    action.throttle,
+                ]);
+            }
             self.trajectories[i].push(&observation, &sample, outcome.reward as f32);
             if car.distance > self.progress_mark[i] + 5.0 * UNITS_PER_METRE {
                 self.progress_mark[i] = car.distance;
@@ -224,6 +309,17 @@ impl LiveTrainer {
                 };
                 stats.attempts += 1;
                 self.episodes += 1;
+                self.diagnostic_counts[reason as usize] += 1;
+                if self.episodes <= 4 || self.episodes % 1000 == 0 || reason == EndReason::Goal {
+                    emit!(
+                        "live_attempt_ended",
+                        self.diagnostic_id,
+                        json!({"epoch":self.diagnostic_epoch,
+                        "attempt":self.episodes,"circuit_attempt":stats.attempts,"car":i,
+                        "reason":format!("{reason:?}"),"update":self.updates,"state":crate::diagnostics::state(car),
+                        "recent_decisions":self.diagnostic_history[i]})
+                    );
+                }
                 let seconds = car.steps as f64 * DECISION_DT;
                 if reason == EndReason::Goal {
                     stats.completed_stints += 1;
@@ -261,8 +357,27 @@ impl LiveTrainer {
             // round ceiling forces it: a degenerate policy dies in a handful of
             // steps, and one update per death would see almost no data.
             if ceiling || self.batch.rows >= MIN_UPDATE_ROWS {
+                let update_started = Instant::now();
+                let rows = self.batch.rows;
                 self.last_update =
                     Some(update(&mut self.policy, &mut self.optimizer, &self.batch)?);
+                let stats = self.last_update.unwrap();
+                if stats.update_scale == 0.0 {
+                    self.diagnostic_rollbacks += 1;
+                }
+                if self.updates < 3
+                    || (self.updates + 1) % 100 == 0
+                    || update_started.elapsed().as_secs() >= 1
+                {
+                    emit!(
+                        "live_update",
+                        self.diagnostic_id,
+                        json!({"epoch":self.diagnostic_epoch,"update":self.updates + 1,
+                        "rows":rows,"ceiling":ceiling,"kl":stats.policy_kl,"scale":stats.update_scale,
+                        "gradient_norm":stats.gradient_norm,"explained_variance":stats.explained_variance,
+                        "duration_ms":update_started.elapsed().as_millis() as u64})
+                    );
+                }
                 self.batch.clear();
                 self.rounds = 0;
                 self.updates += 1;
@@ -315,6 +430,12 @@ impl LiveTrainer {
 
     fn audit_policy(&mut self) {
         let (progress, stopped) = self.audit_progress();
+        emit!(
+            "policy_audit",
+            self.diagnostic_id,
+            json!({"epoch":self.diagnostic_epoch,"update":self.updates,
+            "progress":progress,"stopped":stopped,"best_progress":self.best_progress})
+        );
         if progress > self.best_progress && !stopped {
             self.best_progress = progress;
             self.best_params = Some(self.policy.params().to_vec());
@@ -349,6 +470,16 @@ impl LiveTrainer {
         self.counted_laps = [0; CAR_COUNT];
         self.last_end = [None; CAR_COUNT];
         self.restores += 1;
+        self.diagnostic_epoch += 1;
+        for history in &mut self.diagnostic_history {
+            history.clear();
+        }
+        emit!(
+            "policy_restored",
+            self.diagnostic_id,
+            json!({"epoch":self.diagnostic_epoch,"update":self.updates,
+            "observed_progress":progress,"restored_progress":self.best_progress,"stopped":stopped,"restores":self.restores})
+        );
     }
 }
 
@@ -469,6 +600,9 @@ mod tests {
 
     #[test]
     fn stalled_and_timed_out_cars_restart_without_ending_training() {
+        let _diagnostics = (std::env::var("NEURAL_RACING_CAPTURE_TEST").as_deref()
+            == Ok("endings"))
+        .then(|| neural_racing_diagnostics::init("attempt_endings_test"));
         let mut live = LiveTrainer::new(Circuit::Monza.build(), 7);
         live.progress_step = [-STALL_STEPS; CAR_COUNT];
         live.step().unwrap();
@@ -484,10 +618,14 @@ mod tests {
         assert!(live.last_end.iter().all(|r| *r == Some(EndReason::Timeout)));
         live.step().unwrap();
         assert!(live.cars.iter().all(|c| c.steps == 1));
+        live.diagnostic_progress();
     }
 
     #[test]
     fn a_collapsed_mean_policy_restores_the_best_snapshot() {
+        let _diagnostics = (std::env::var("NEURAL_RACING_CAPTURE_TEST").as_deref()
+            == Ok("restore"))
+        .then(|| neural_racing_diagnostics::init("policy_restore_test"));
         let mut live = LiveTrainer::new(Track::oval(), 5);
         let good = live.policy.params().to_vec();
         live.best_progress = 0.2;
@@ -507,6 +645,8 @@ mod tests {
         assert_eq!(live.restores, 1);
         assert_eq!(live.policy.params(), good.as_slice());
         assert_eq!(live.best_progress, 0.2, "a restore is not a new best");
+        live.step().unwrap();
+        live.diagnostic_progress();
     }
 
     #[test]

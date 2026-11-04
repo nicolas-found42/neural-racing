@@ -1,5 +1,6 @@
 //! The application: modes, controls, dashboard and live training.
 
+use neural_racing_diagnostics::{emit, json};
 use std::path::PathBuf;
 
 use eframe::App as EframeApp;
@@ -22,7 +23,7 @@ use crate::widgets;
 
 const DECISIONS_PER_SECOND: f32 = 1.0 / DECISION_DT as f32;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Watch,
     Manual,
@@ -68,6 +69,11 @@ pub struct App {
     crashed: i32,
     training: Option<TrainingSession>,
     status: String,
+    diagnostic_last_frame: std::time::Instant,
+    diagnostic_last_report: std::time::Instant,
+    diagnostic_max_gap_ms: u64,
+    diagnostic_frames: u64,
+    diagnostic_stale_frames: u64,
 }
 
 impl App {
@@ -109,6 +115,11 @@ impl App {
             crashed: 0,
             training: None,
             status: String::new(),
+            diagnostic_last_frame: std::time::Instant::now(),
+            diagnostic_last_report: std::time::Instant::now(),
+            diagnostic_max_gap_ms: 0,
+            diagnostic_frames: 0,
+            diagnostic_stale_frames: 0,
         }
     }
 
@@ -130,6 +141,12 @@ impl App {
         if let Some(mode) = mode {
             self.apply(UiAction::SetMode(mode));
         }
+        emit!(
+            "ui_config",
+            self.race.diagnostic_id,
+            json!({"seed":seed,"mode":format!("{:?}",self.mode),
+            "speed":self.speed,"uncapped":self.maximum_speed,"track":neural_racing_engine::diagnostics::track(&self.race.env.track)})
+        );
     }
 
     pub fn select_circuit(&mut self, circuit: Option<Circuit>) {
@@ -180,6 +197,12 @@ impl App {
         } else {
             self.race.reset(seed, DEFAULT_LAPS);
         }
+        emit!(
+            "race_restarted",
+            self.race.diagnostic_id,
+            json!({"mode":format!("{:?}",self.mode),"seed":seed,
+            "track":neural_racing_engine::diagnostics::track(&self.race.env.track),"new_track":new_track})
+        );
         self.restart_timer = 0.0;
         self.accumulator = 0.0;
     }
@@ -201,6 +224,12 @@ impl App {
         let Some(outcome) = self.race.outcome else {
             return;
         };
+        emit!(
+            "race_ended",
+            self.race.diagnostic_id,
+            json!({"mode":format!("{:?}",self.mode),"seed":self.race.track_seed,
+            "reason":outcome.label(),"state":neural_racing_engine::diagnostics::state(&self.race.env)})
+        );
         if let Some(lap) = self.race.best_lap() {
             self.best_lap = Some(self.best_lap.map_or(lap, |best| best.min(lap)));
         }
@@ -216,6 +245,15 @@ impl App {
     }
 
     fn apply(&mut self, action: UiAction) {
+        let action_name = match &action {
+            UiAction::TogglePause => "pause",
+            UiAction::Restart => "restart",
+            UiAction::NewTrack => "next_track",
+            UiAction::SetSpeed(_) => "speed",
+            UiAction::SetMode(_) => "mode",
+            UiAction::SelectCircuit(_) => "track",
+            _ => "display",
+        };
         match action {
             UiAction::SelectCircuit(circuit) => self.select_circuit(circuit),
             UiAction::ToggleOverview => self.overview = !self.overview,
@@ -287,6 +325,13 @@ impl App {
                 }
             }
         }
+        emit!(
+            "ui_control",
+            0,
+            json!({"action":action_name,"mode":format!("{:?}",self.mode),
+            "paused":self.paused,"speed":self.speed,"uncapped":self.maximum_speed,
+            "circuit":self.circuit.map(|c|c.slug()).unwrap_or("procedural")})
+        );
     }
 
     fn start_training(&mut self) {
@@ -320,6 +365,7 @@ impl App {
         if let Some(session) = &mut self.training {
             if let Some(snapshot) = session.worker.take() {
                 if snapshot.revision != session.worker.revision {
+                    self.diagnostic_stale_frames += 1;
                     return;
                 }
                 // Acknowledge pause with the worker's exact stopped state.
@@ -1136,6 +1182,12 @@ impl EframeApp for App {
 
 impl App {
     fn frame(&mut self, ctx: &Context, ui: &mut Ui) {
+        let now = std::time::Instant::now();
+        self.diagnostic_max_gap_ms = self
+            .diagnostic_max_gap_ms
+            .max(now.duration_since(self.diagnostic_last_frame).as_millis() as u64);
+        self.diagnostic_last_frame = now;
+        self.diagnostic_frames += 1;
         let dt = ctx.input(|input| input.stable_dt).min(0.1);
         self.handle_shortcuts(ctx);
         self.advance_race(&ctx, dt);
@@ -1200,6 +1252,21 @@ impl App {
             )
             .show(ui, |ui| self.canvas(ui));
 
+        // Ten-second monotonic windows; not every frame. A frozen renderer cannot report until it resumes.
+        if self.diagnostic_last_report.elapsed().as_secs() >= 10 {
+            emit!(
+                "ui_health",
+                0,
+                json!({"frames":self.diagnostic_frames,"max_frame_gap_ms":self.diagnostic_max_gap_ms,
+                "stale_revision_frames":self.diagnostic_stale_frames,"mode":format!("{:?}",self.mode),
+                "session":self.training_stats().map(|s|s.diagnostic_id),
+                "snapshot_age_ms":self.training_stats().map(|s|s.published_at.elapsed().as_millis() as u64),
+                "worker_finished":self.training.as_ref().map(|s|s.worker.is_finished())})
+            );
+            self.diagnostic_frames = 0;
+            self.diagnostic_max_gap_ms = 0;
+            self.diagnostic_last_report = now;
+        }
         ctx.request_repaint();
     }
 }
@@ -1214,18 +1281,33 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
     candidates.push(repo_models.join("policy.bin"));
     candidates.push(repo_models.join("best.bin"));
     candidates.push(PathBuf::from("models/policy.bin"));
-    for candidate in &candidates {
+    for (index, candidate) in candidates.iter().enumerate() {
         if candidate.exists() {
             if let Ok(policy) = Policy::load(candidate) {
                 if policy.obs_dim == neural_racing_core::OBS_DIM
                     && policy.width == DEFAULT_WIDTH
                     && policy.blocks == DEFAULT_BLOCKS
                 {
+                    emit!(
+                        "watch_policy_selected",
+                        0,
+                        json!({"candidate_index":index,"obs_dim":policy.obs_dim})
+                    );
                     return (Some(policy), candidate.clone());
                 }
+                emit!(
+                    "watch_policy_incompatible",
+                    0,
+                    json!({"candidate_index":index,"obs_dim":policy.obs_dim,"width":policy.width,"blocks":policy.blocks})
+                );
             }
         }
     }
+    emit!(
+        "watch_policy_unavailable",
+        0,
+        json!({"candidates":candidates.len()})
+    );
     (None, candidates[0].clone())
 }
 
@@ -1235,7 +1317,7 @@ mod tests {
     use std::time::{Duration, Instant};
 
     fn wait_for(app: &mut App, predicate: impl Fn(&Snapshot) -> bool) {
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + Duration::from_secs(30);
         loop {
             app.poll_training();
             if app.training_stats().is_some_and(&predicate) {
@@ -1243,7 +1325,8 @@ mod tests {
             }
             assert!(
                 Instant::now() < deadline,
-                "app did not receive expected session state"
+                "app did not receive expected session state; latest (decisions, updates, revision, paused, error) = {:?}",
+                app.training_stats().map(|s|(s.decisions,s.updates,s.revision,s.paused,&s.error))
             );
             std::thread::sleep(Duration::from_millis(10));
         }

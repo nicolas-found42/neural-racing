@@ -38,7 +38,7 @@ impl Default for Args {
     }
 }
 
-fn parse_args() -> Args {
+fn parse_args() -> Option<Args> {
     let mut args = Args::default();
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -63,12 +63,12 @@ fn parse_args() -> Args {
                      \x20     [--seed N] [--out PATH] [--eval-every N] [--eval-tracks N]\n\
                      \x20     [--resume PATH] [--log PATH]"
                 );
-                std::process::exit(0);
+                return None;
             }
             other => panic!("unknown flag {other}"),
         }
     }
-    args
+    Some(args)
 }
 
 fn print_eval(report: &EvalReport, tracks: usize) {
@@ -85,8 +85,35 @@ fn print_eval(report: &EvalReport, tracks: usize) {
     );
 }
 
+fn save_checkpoint(policy: &Policy, path: &std::path::Path, role: &'static str, generation: i64) {
+    let op = neural_racing_diagnostics::operation();
+    let _context = neural_racing_diagnostics::context(op);
+    neural_racing_diagnostics::emit!(
+        "checkpoint_started",
+        op,
+        neural_racing_diagnostics::json!({"role":role,"generation":generation})
+    );
+    let result = policy.save(path);
+    neural_racing_diagnostics::emit!(
+        "checkpoint_finished",
+        op,
+        neural_racing_diagnostics::json!({"role":role,"generation":generation,"ok":result.is_ok()})
+    );
+    result.expect("save policy checkpoint");
+}
+
 fn main() {
-    let args = parse_args();
+    let _diagnostics = neural_racing_diagnostics::init("train");
+    let Some(args) = parse_args() else {
+        return;
+    };
+    neural_racing_diagnostics::emit!(
+        "train_config",
+        0,
+        neural_racing_diagnostics::json!({
+        "seed":args.seed,"workers":args.workers,"episodes_per_worker":args.episodes_per_worker,
+        "generations":args.generations,"laps":args.laps,"eval_every":args.eval_every,"eval_tracks":args.eval_tracks,"resume":args.resume.is_some()})
+    );
     let mut config = RaceConfig::new(args.seed, args.workers);
     config.laps = args.laps;
     config.episodes_per_worker = args.episodes_per_worker;
@@ -126,7 +153,13 @@ fn main() {
             "{{\"event\":\"start\",\"seed\":{},\"workers\":{},\"laps\":{},\"episodes\":{}}}",
             args.seed, args.workers, args.laps, args.episodes_per_worker
         )
-        .ok();
+        .unwrap_or_else(|error| {
+            neural_racing_diagnostics::emit!(
+                "legacy_log_error",
+                0,
+                neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})
+            )
+        });
     }
 
     println!(
@@ -181,7 +214,8 @@ fn main() {
                 stats.rows,
                 stats.elapsed_seconds,
             )
-            .ok();
+            .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", 0,
+            neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})));
         }
 
         let due = args.eval_every > 0
@@ -189,14 +223,11 @@ fn main() {
         if due {
             let report = evaluate(&trainer.policy, eval_base, args.eval_tracks, args.laps);
             print_eval(&report, args.eval_tracks);
-            trainer
-                .policy
-                .save(&args.out)
-                .expect("save policy checkpoint");
+            save_checkpoint(&trainer.policy, &args.out, "evaluation", stats.generation);
             let current = score(&report);
             if best.is_none() || current > best.map(|(value, _)| value).unwrap() {
                 best = Some((current, stats.generation));
-                trainer.policy.save(&best_path).expect("save best policy");
+                save_checkpoint(&trainer.policy, &best_path, "best", stats.generation);
                 println!(
                     "    saved best policy at generation {} -> {}",
                     stats.generation,
@@ -222,12 +253,13 @@ fn main() {
                     report.mean_speed,
                     report.min_wall,
                 )
-                .ok();
+                .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", 0,
+            neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})));
             }
         }
     }
 
-    trainer.policy.save(&args.out).expect("save final policy");
+    save_checkpoint(&trainer.policy, &args.out, "final", trainer.generation);
     println!(
         "saved {} ({} parameters) — best generation {}",
         args.out.display(),

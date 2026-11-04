@@ -6,6 +6,7 @@ use neural_racing_engine::{
 };
 use std::time::{Duration, Instant};
 fn main() {
+    let _diagnostics = neural_racing_diagnostics::init("live_benchmark");
     let seconds: u64 = std::env::args()
         .nth(1)
         .and_then(|s| s.parse().ok())

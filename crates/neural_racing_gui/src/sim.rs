@@ -48,6 +48,7 @@ impl Pose {
 }
 
 pub struct RaceView {
+    pub diagnostic_id: u64,
     pub env: Env,
     pub track_seed: u64,
     pub trail: Vec<Vec2>,
@@ -66,6 +67,7 @@ pub struct RaceView {
 impl RaceView {
     pub fn new(track_seed: u64, laps: i32) -> Self {
         Self {
+            diagnostic_id: neural_racing_diagnostics::operation(),
             env: Env::new(Track::random(track_seed), laps),
             track_seed,
             trail: Vec::with_capacity(400),
@@ -83,6 +85,7 @@ impl RaceView {
     }
 
     pub fn reset(&mut self, track_seed: u64, laps: i32) {
+        self.diagnostic_id = neural_racing_diagnostics::operation();
         self.env = Env::new(Track::random(track_seed), laps);
         self.track_seed = track_seed;
         self.trail.clear();

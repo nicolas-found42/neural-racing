@@ -640,6 +640,27 @@ impl Policy {
     }
 
     pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
+        let op = neural_racing_diagnostics::operation();
+        neural_racing_diagnostics::emit!(
+            "policy_save_started",
+            op,
+            neural_racing_diagnostics::json!({
+            "parent":neural_racing_diagnostics::current_operation(), "parameters":self.num_params(), "obs_dim":self.obs_dim})
+        );
+        let started = std::time::Instant::now();
+        let _context = neural_racing_diagnostics::context(op);
+        let result = self.save_inner(path);
+        neural_racing_diagnostics::emit!(
+            "policy_save_finished",
+            op,
+            neural_racing_diagnostics::json!({
+            "ok":result.is_ok(), "error_kind":result.as_ref().err().map(|e| format!("{:?}",e.kind())),
+            "duration_ms":started.elapsed().as_millis() as u64})
+        );
+        result
+    }
+
+    fn save_inner(&self, path: &std::path::Path) -> std::io::Result<()> {
         let mut bytes = Vec::with_capacity(64 + self.num_params() * 4);
         bytes.extend_from_slice(MAGIC);
         bytes.extend_from_slice(&VERSION.to_le_bytes());
@@ -653,11 +674,57 @@ impl Policy {
                 bytes.extend_from_slice(&value.to_le_bytes());
             }
         }
+        neural_racing_diagnostics::emit!(
+            "policy_bytes",
+            neural_racing_diagnostics::current_operation(),
+            neural_racing_diagnostics::json!({"bytes":bytes.len(),"content_id":neural_racing_diagnostics::fingerprint(&bytes)})
+        );
         std::fs::write(path, bytes)
     }
 
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
+        let op = neural_racing_diagnostics::operation();
+        neural_racing_diagnostics::emit!(
+            "policy_load_started",
+            op,
+            neural_racing_diagnostics::json!({
+            "parent":neural_racing_diagnostics::current_operation()})
+        );
+        let started = std::time::Instant::now();
+        let _context = neural_racing_diagnostics::context(op);
+        let result = Self::load_inner(path);
+        // Only code-defined categories cross the diagnostic boundary; never raw I/O text.
+        let reason = result
+            .as_ref()
+            .err()
+            .map(|error| match error.to_string().as_str() {
+                "not a policy file" => "bad_magic",
+                "unsupported policy version: retrain from scratch" => "unsupported_version",
+                "truncated policy file" => "truncated",
+                "policy action dimension is not steer/throttle" => "action_dimension",
+                "policy layer shape does not match its header" => "layer_shape",
+                "trailing bytes after policy parameters" => "trailing_bytes",
+                _ => "io_error",
+            });
+        neural_racing_diagnostics::emit!(
+            "policy_load_finished",
+            op,
+            neural_racing_diagnostics::json!({
+            "ok":result.is_ok(), "error_kind":result.as_ref().err().map(|e| format!("{:?}",e.kind())),
+            "reason":reason,
+            "obs_dim":result.as_ref().ok().map(|p|p.obs_dim),
+            "duration_ms":started.elapsed().as_millis() as u64})
+        );
+        result
+    }
+
+    fn load_inner(path: &std::path::Path) -> std::io::Result<Self> {
         let bytes = std::fs::read(path)?;
+        neural_racing_diagnostics::emit!(
+            "policy_bytes",
+            neural_racing_diagnostics::current_operation(),
+            neural_racing_diagnostics::json!({"bytes":bytes.len(),"content_id":neural_racing_diagnostics::fingerprint(&bytes)})
+        );
         let mut cursor = 0usize;
         let take = |cursor: &mut usize, count: usize| -> std::io::Result<&[u8]> {
             if *cursor + count > bytes.len() {

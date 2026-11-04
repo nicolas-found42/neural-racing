@@ -1,5 +1,6 @@
 //! Parallel rollouts, the generation loop, and evaluation on fresh tracks.
 
+use neural_racing_diagnostics::{emit, json};
 use std::time::Instant;
 
 use neural_racing_core::{
@@ -194,10 +195,26 @@ impl EvalReport {
 
 /// Races the deterministic policy over `count` unseen random tracks.
 pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> EvalReport {
+    let op = neural_racing_diagnostics::operation();
+    let _context = neural_racing_diagnostics::context(op);
+    let started = Instant::now();
+    emit!(
+        "evaluation_started",
+        op,
+        json!({"seed":base_seed,"tracks":count,"laps":laps})
+    );
     let mut rows = Vec::with_capacity(count);
     for index in 0..count {
         let seed = base_seed.wrapping_add(index as u64);
         let report = deterministic_episode(policy, Track::random(seed), laps);
+        if index < 4 || index % 100 == 0 {
+            emit!(
+                "evaluation_track",
+                op,
+                json!({"index":index,"seed":seed,"finished":report.finished(),
+                "off_track":report.off_track,"steps":report.steps,"distance":report.distance,"min_wall":report.min_wall})
+            );
+        }
         rows.push(EvalRow {
             seed,
             finished: report.finished(),
@@ -225,6 +242,12 @@ pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> Eva
             .fold(f64::INFINITY, f64::min),
         rows,
     };
+    emit!(
+        "evaluation_finished",
+        op,
+        json!({"finished":report.finished,"crashed":report.crashed,
+        "timed_out":report.timed_out,"duration_ms":started.elapsed().as_millis() as u64})
+    );
     report
 }
 
@@ -282,7 +305,14 @@ impl Trainer {
     pub fn train_generation(&mut self) -> GenerationStats {
         let started = Instant::now();
         let generation = self.generation + 1;
-
+        let op = neural_racing_diagnostics::operation();
+        let _context = neural_racing_diagnostics::context(op);
+        emit!(
+            "generation_started",
+            op,
+            json!({"generation":generation,"seed":self.config.seed,
+            "workers":self.config.workers,"episodes_per_worker":self.config.episodes_per_worker})
+        );
         let policy = &self.policy;
         let config = &self.config;
 
@@ -292,6 +322,7 @@ impl Trainer {
                     let policy = &*policy;
                     let config = config;
                     scope.spawn(move || {
+                        let _context = neural_racing_diagnostics::context(op);
                         let mut rollouts = Vec::with_capacity(config.episodes_per_worker);
                         for episode in 0..config.episodes_per_worker {
                             let track_seed = config.track_seed(generation, worker, episode);
@@ -302,6 +333,8 @@ impl Trainer {
                                     .wrapping_add((episode as u64) << 16)
                                     .wrapping_add(generation as u64),
                             );
+                            emit!("rollout_started", op, json!({"worker":worker,"episode":episode,"track_seed":track_seed,
+                                "variant":(generation as usize + worker + episode) % 3}));
                             // Every third episode comes from the hard tail of the
                             // distribution (narrow road, sharp corners), where
                             // the policy is weakest; the rest are ordinary tracks.
@@ -318,6 +351,9 @@ impl Trainer {
                                 &mut rng,
                                 true,
                             ));
+                            let report = &rollouts.last().unwrap().report;
+                            emit!("rollout_finished", op, json!({"worker":worker,"episode":episode,"track_seed":track_seed,
+                                "finished":report.finished(),"off_track":report.off_track,"steps":report.steps,"distance":report.distance}));
                         }
                         rollouts
                     })
@@ -350,8 +386,14 @@ impl Trainer {
         }
 
         let rows = batch.rows;
-        let stats = update(&mut self.policy, &mut self.adam, &batch)
-            .unwrap_or_else(|error| panic!("generation {generation} update failed: {error}"));
+        let stats = update(&mut self.policy, &mut self.adam, &batch).unwrap_or_else(|error| {
+            emit!(
+                "generation_error",
+                op,
+                json!({"generation":generation,"reason":error,"rows":rows})
+            );
+            panic!("generation {generation} update failed: {error}")
+        });
 
         self.generation = generation;
         self.episodes_seen += reports.len() as i64;
@@ -381,6 +423,14 @@ impl Trainer {
             rows,
             elapsed_seconds: started.elapsed().as_secs_f64(),
         };
+        emit!(
+            "generation_finished",
+            op,
+            json!({"generation":generation,"episodes":result.episodes,
+            "finished":result.finished,"crashes":result.crashes,"timeouts":result.timeouts,
+            "rows":rows,"kl":stats.policy_kl,"scale":stats.update_scale,"gradient_norm":stats.gradient_norm,
+            "seconds":result.elapsed_seconds})
+        );
         result
     }
 }
@@ -397,3 +447,5 @@ pub fn gates_per_lap() -> i32 {
 
 /// Incremental, in-memory learning used by the live desktop session.
 pub mod live;
+
+pub mod diagnostics;

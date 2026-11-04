@@ -6,13 +6,15 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use neural_racing_core::{Env, Track, Vec2, DECISION_DT};
-
+use neural_racing_diagnostics::{emit, json};
 use neural_racing_engine::live::{
     normalize_speed, CircuitStats, EndReason, LiveTrainer, Pacer, CAR_COUNT,
 };
 use neural_racing_ml::{Policy, UpdateStats};
 
 pub struct Snapshot {
+    pub published_at: Instant,
+    pub diagnostic_id: u64,
     pub cars: [Env; CAR_COUNT],
     pub trails: [Vec<Vec2>; CAR_COUNT],
     pub stats: [CircuitStats; 4],
@@ -36,8 +38,32 @@ enum Command {
     Stop,
 }
 
+impl Command {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Running(_) => "running",
+            Self::Speed(_) => "speed",
+            Self::Track(..) => "track",
+            Self::Reset(..) => "reset",
+            Self::Stop => "stop",
+        }
+    }
+    fn fields(&self) -> neural_racing_diagnostics::Value {
+        match self {
+            Self::Running(v) => json!({"running":v}),
+            Self::Speed(v) => json!({"speed":v,"uncapped":v.is_infinite()}),
+            Self::Track(track, revision) => {
+                json!({"track":neural_racing_engine::diagnostics::track(track),"revision":revision})
+            }
+            Self::Reset(seed, revision) => json!({"seed":seed,"revision":revision}),
+            Self::Stop => json!({}),
+        }
+    }
+}
+
 pub struct Learning {
-    sender: mpsc::Sender<Command>,
+    sender: mpsc::Sender<(u64, Instant, Command)>,
+    diagnostic_id: u64,
     latest: Arc<Mutex<Option<Snapshot>>>,
     worker: Option<JoinHandle<()>>,
     pub revision: u64,
@@ -45,12 +71,21 @@ pub struct Learning {
 
 impl Learning {
     pub fn start(track: Track, seed: u64, speed: f64) -> Self {
-        let (sender, receiver) = mpsc::channel::<Command>();
+        let (sender, receiver) = mpsc::channel::<(u64, Instant, Command)>();
+        let diagnostic_id = neural_racing_diagnostics::operation();
+        emit!(
+            "worker_requested",
+            diagnostic_id,
+            json!({"seed":seed,"speed":speed,"uncapped":speed.is_infinite(),
+            "track":neural_racing_engine::diagnostics::track(&track)})
+        );
         let latest = Arc::new(Mutex::new(None));
         let published = latest.clone();
         let worker = std::thread::Builder::new()
             .name("live-learning".into())
             .spawn(move || {
+                let _context = neural_racing_diagnostics::context(diagnostic_id);
+                emit!("worker_started", diagnostic_id, json!({}));
                 let mut trainer = LiveTrainer::new(track, seed);
                 let mut trails: [VecDeque<Vec2>; CAR_COUNT] =
                     std::array::from_fn(|_| VecDeque::new());
@@ -66,13 +101,20 @@ impl Learning {
                 let mut rate_decisions = 0;
                 let mut achieved = 0.0;
                 let mut error = None;
+                let mut last_health = Instant::now();
                 loop {
                     let mut changed = false;
-                    while let Ok(command) = receiver.try_recv() {
+                    while let Ok((command_id, sent_at, command)) = receiver.try_recv() {
+                        let command_name = command.name();
+                        emit!("command_received", command_id, json!({"worker":diagnostic_id,"name":command_name,
+                            "queue_ms":sent_at.elapsed().as_millis() as u64,"revision":revision,"session":trainer.diagnostic_id}));
                         match command {
                             Command::Stop => {
+                                trainer.diagnostic_progress();
+                                emit!("command_applied", command_id, json!({"worker":diagnostic_id,"revision":revision,"name":command_name}));
+                                emit!("worker_stopped", diagnostic_id, json!({"session":trainer.diagnostic_id}));
                                 return;
-                            }
+                            },
                             Command::Running(value) => {
                                 running = value;
                                 pacer.reset();
@@ -91,7 +133,10 @@ impl Learning {
                                 }
                             }
                             Command::Reset(seed, version) => {
+                                trainer.diagnostic_progress();
+                                let old_session = trainer.diagnostic_id;
                                 trainer = LiveTrainer::new(trainer.cars[0].track.clone(), seed);
+                                emit!("worker_session_reset", diagnostic_id, json!({"old_session":old_session,"session":trainer.diagnostic_id,"command":command_id}));
                                 revision = version;
                                 policy_update = u64::MAX;
                                 error = None;
@@ -101,6 +146,9 @@ impl Learning {
                                 }
                             }
                         }
+                        emit!("command_applied", command_id, json!({"worker":diagnostic_id,"name":command_name,
+                            "revision":revision,"session":trainer.diagnostic_id,"running":running,"speed":requested,
+                            "uncapped":requested.is_infinite(),"error_present":error.is_some()}));
                         changed = true;
                     }
                     if changed {
@@ -119,6 +167,8 @@ impl Learning {
                     let slice = Instant::now();
                     while running && error.is_none() && (requested.is_infinite() || pacer.take()) {
                         if let Err(message) = trainer.step() {
+                            emit!("worker_error", diagnostic_id, json!({"session":trainer.diagnostic_id,"reason":message,
+                                "revision":revision,"decisions":trainer.decisions,"updates":trainer.updates}));
                             error = Some(message.to_string());
                         }
                         for (car, trail) in trainer.cars.iter().zip(&mut trails) {
@@ -154,6 +204,8 @@ impl Learning {
                             policy_update = trainer.updates;
                         }
                         let snapshot = Snapshot {
+                            published_at: Instant::now(),
+                            diagnostic_id: trainer.diagnostic_id,
                             cars: trainer.cars.clone(),
                             trails: std::array::from_fn(|i| trails[i].iter().copied().collect()),
                             stats: trainer.stats.clone(),
@@ -172,6 +224,13 @@ impl Learning {
                         *published.lock().unwrap() = Some(snapshot);
                         last_publish = Instant::now();
                     }
+                    if last_health.elapsed().as_secs() >= 10 {
+                        emit!("worker_health", diagnostic_id, json!({"session":trainer.diagnostic_id,"revision":revision,
+                            "running":running,"error_present":error.is_some(),"requested_speed":requested,"uncapped":requested.is_infinite(),
+                            "achieved_speed":achieved,"publish_age_ms":last_publish.elapsed().as_millis() as u64,
+                            "decisions":trainer.decisions,"updates":trainer.updates}));
+                        last_health = Instant::now();
+                    }
                     if running && error.is_none() && (requested.is_infinite() || pacer.ready()) {
                         // No mandatory idle time while there is useful work.
                         // The short slices still check controls and publish frames.
@@ -184,35 +243,54 @@ impl Learning {
             .expect("start live learning thread");
         Self {
             sender,
+            diagnostic_id,
             latest,
             worker: Some(worker),
             revision: 0,
         }
     }
-
+    pub fn is_finished(&self) -> bool {
+        self.worker.as_ref().is_none_or(|w| w.is_finished())
+    }
+    fn send(&self, command: Command) {
+        let id = neural_racing_diagnostics::operation();
+        emit!(
+            "command_requested",
+            id,
+            json!({"worker":self.diagnostic_id,"name":command.name(),"data":command.fields()})
+        );
+        if self.sender.send((id, Instant::now(), command)).is_err() {
+            emit!(
+                "command_disconnected",
+                id,
+                json!({"worker":self.diagnostic_id})
+            );
+        }
+    }
     pub fn take(&self) -> Option<Snapshot> {
         self.latest.lock().unwrap().take()
     }
     pub fn running(&self, value: bool) {
-        let _ = self.sender.send(Command::Running(value));
+        self.send(Command::Running(value));
     }
     pub fn speed(&self, value: f64) {
-        let _ = self.sender.send(Command::Speed(value));
+        self.send(Command::Speed(value));
     }
     pub fn track(&mut self, track: Track) {
         self.revision += 1;
-        let _ = self.sender.send(Command::Track(track, self.revision));
+        self.send(Command::Track(track, self.revision));
     }
     pub fn reset(&mut self, seed: u64) {
         self.revision += 1;
-        let _ = self.sender.send(Command::Reset(seed, self.revision));
+        self.send(Command::Reset(seed, self.revision));
     }
 }
 impl Drop for Learning {
     fn drop(&mut self) {
-        let _ = self.sender.send(Command::Stop);
+        self.send(Command::Stop);
         if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
+            let ok = worker.join().is_ok();
+            emit!("worker_joined", self.diagnostic_id, json!({"ok":ok}));
         }
     }
 }

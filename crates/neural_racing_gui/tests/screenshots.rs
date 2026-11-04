@@ -23,6 +23,24 @@ fn harness() -> Harness<'static, App> {
         .build_ui_state(|ui, app: &mut App| app.render(ui), app)
 }
 
+/// Wait on a worker acknowledgment, not an assumed machine throughput.
+fn wait_training(
+    harness: &mut Harness<'static, App>,
+    predicate: impl Fn(&neural_racing_gui::learning::Snapshot) -> bool,
+) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        harness.run_steps(1);
+        if harness.state().training_stats().is_some_and(&predicate) {
+            return;
+        }
+        assert!(std::time::Instant::now() < deadline,
+            "worker state wait expired; latest (decisions, updates, revision, paused, error) = {:?}",
+            harness.state().training_stats().map(|s|(s.decisions,s.updates,s.revision,s.paused,&s.error)));
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
 fn save(harness: &mut Harness<'static, App>, name: &str) {
     let image = harness.render().expect("wgpu renders the frame");
     assert_eq!(image.width(), SIZE.x as u32);
@@ -40,10 +58,7 @@ fn watch_mode_uses_the_current_live_model() {
     harness
         .state_mut()
         .configure(None, Some(Mode::Train), Some(1000.0));
-    for _ in 0..40 {
-        harness.run_steps(1);
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
+    wait_training(&mut harness, |s| s.updates > 0);
     assert!(harness
         .state()
         .training_stats()
@@ -102,10 +117,7 @@ fn live_training_streams_generations_into_the_dashboard() {
     harness
         .state_mut()
         .configure(None, Some(Mode::Train), Some(1000.0));
-    for _ in 0..100 {
-        harness.run_steps(5);
-        std::thread::sleep(std::time::Duration::from_millis(25));
-    }
+    wait_training(&mut harness, |s| s.updates > 0 && s.episodes > 0);
     let stats = harness
         .state()
         .training_stats()
@@ -234,10 +246,7 @@ fn cars_stay_live_at_every_speed_and_pause_freezes_learning() {
         save(&mut harness, &format!("learning-{speed}x"));
     }
     harness.key_press(Key::Space);
-    for _ in 0..15 {
-        harness.run_steps(1);
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    wait_training(&mut harness, |s| s.paused);
     let paused = harness.state().training_stats().unwrap();
     assert!(paused.paused);
     let decisions = paused.decisions;
@@ -252,10 +261,7 @@ fn cars_stay_live_at_every_speed_and_pause_freezes_learning() {
     );
     assert_eq!(harness.state().race().env.position(), position);
     harness.key_press(Key::Space);
-    for _ in 0..15 {
-        harness.run_steps(1);
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    wait_training(&mut harness, |s| !s.paused && s.decisions > decisions);
     assert!(harness.state().training_stats().unwrap().decisions > decisions);
 }
 
@@ -274,6 +280,8 @@ fn sustained_live_render_at_max_speed() {
 }
 
 fn benchmark_live_render(speed: f32, label: &str) {
+    let _diagnostics = (std::env::var("NEURAL_RACING_CAPTURE_TEST").as_deref() == Ok("render"))
+        .then(|| neural_racing_diagnostics::init("render_test"));
     use neural_racing_core::{Circuit, DECISION_DT};
     use std::time::{Duration, Instant};
     for circuit in Circuit::ALL {

@@ -14,7 +14,8 @@ struct Args {
     quiet: bool,
 }
 
-fn main() {
+fn main() -> std::process::ExitCode {
+    let _diagnostics = neural_racing_diagnostics::init("verify");
     let mut args = Args {
         model: PathBuf::from("models/policy.bin"),
         tracks: 50,
@@ -36,17 +37,27 @@ fn main() {
             "--quiet" => args.quiet = true,
             "--help" | "-h" => {
                 println!("verify [--model PATH] [--tracks N] [--laps N] [--seed N] [--quiet]");
-                return;
+                return std::process::ExitCode::SUCCESS;
             }
             other => panic!("unknown flag {other}"),
         }
     }
 
+    neural_racing_diagnostics::emit!(
+        "verify_config",
+        0,
+        neural_racing_diagnostics::json!({"seed":args.seed,"tracks":args.tracks,"laps":args.laps})
+    );
     let policy = Policy::load(&args.model)
         .unwrap_or_else(|error| panic!("load {}: {error}", args.model.display()));
     if policy.obs_dim != neural_racing_core::OBS_DIM {
         eprintln!("This policy uses the old observation/physics format. Train a fresh model for the current vehicle dynamics.");
-        std::process::exit(2);
+        neural_racing_diagnostics::emit!(
+            "policy_incompatible",
+            0,
+            neural_racing_diagnostics::json!({"actual_obs_dim":policy.obs_dim,"expected_obs_dim":neural_racing_core::OBS_DIM})
+        );
+        return std::process::ExitCode::from(2);
     }
     println!(
         "{} ({} parameters) on {} fresh tracks, {} laps each",
@@ -90,10 +101,21 @@ fn main() {
     );
 
     if report.finished < args.tracks {
-        std::process::exit(1);
+        neural_racing_diagnostics::emit!(
+            "verify_result",
+            0,
+            neural_racing_diagnostics::json!({"passed":false,"finished":report.finished,"tracks":args.tracks})
+        );
+        return std::process::ExitCode::FAILURE;
     }
     println!(
         "PASS: every one of {} unseen random tracks completed {} laps without leaving the road",
         args.tracks, args.laps
     );
+    neural_racing_diagnostics::emit!(
+        "verify_result",
+        0,
+        neural_racing_diagnostics::json!({"passed":true,"tracks":args.tracks})
+    );
+    std::process::ExitCode::SUCCESS
 }

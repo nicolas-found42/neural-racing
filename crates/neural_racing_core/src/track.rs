@@ -242,6 +242,11 @@ impl Track {
         }
         // A plain oval always satisfies the constraints; keep the app runnable
         // even if an extreme RNG drawing never fits.
+        neural_racing_diagnostics::emit!(
+            "track_generation_fallback",
+            neural_racing_diagnostics::current_operation(),
+            neural_racing_diagnostics::json!({"seed":seed,"rejected_candidates":512})
+        );
         Self::oval()
     }
 
