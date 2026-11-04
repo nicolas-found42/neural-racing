@@ -307,6 +307,7 @@ zone is credited back to its entry rather than being judged only at the corner.
 | `neural_racing_ml` | Normalized residual actor-critic with hand-written forward/backward pass, Adam, PPO update, binary weights |
 | `neural_racing_engine` | Parallel rollouts, generation loop, evaluation, `train` and `verify` binaries |
 | `neural_racing_gui` | egui/eframe game window: race view, dashboard, live training |
+| `neural_racing_diagnostics` | Bounded local event store, build/run identity, lifecycle and evidence-loss reporting |
 
 ## Tests
 
@@ -344,3 +345,19 @@ cargo test --workspace
 All three are rendered by `crates/neural_racing_gui/tests/screenshots.rs` through the
 real UI code, so they cannot drift from the app. `docs/screenshots/before-python.png`
 is the pygame version this replaced, kept for comparison.
+
+## Investigating past failures
+
+Newly built executables retain bounded, local JSONL diagnostics with run/build IDs,
+worker command acknowledgments, sampled race/update history, recovery events and
+policy file outcomes. This saves diagnostic evidence, not live model weights.
+
+```sh
+python3 scripts/diagnostics.py --summary
+python3 scripts/diagnostics.py --since 2026-11-03T00:00:00-05:00 --until 2026-11-04T00:00:00-05:00
+```
+
+The default store is `$HOME/.local/state/neural-racing/diagnostics`. See the
+[coverage inventory, retention limits and investigation runbook](docs/observability.md)
+and [actual local verification](docs/observability-verification.md). Missing or expired
+history cannot be recovered by adding instrumentation later.
