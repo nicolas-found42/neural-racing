@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "description": "Two actual unscaled positive-winding MonteCarlo RNW floor triangles. Native395760 placement query(Y+5) selects the upper floor even when the input point lies on the lower floor. This is not a backface-culling fixture.",
+  "source_course_sha256": "9cb73e32c0342bd11eaeb604617c77f9cb49cee49282e5539914b2a68463430b",
+  "source_mesh_sha256": "29a3c7bba761be5928c24ace429f4500d28b99942071f35aaf4ae5f48844f09e",
+  "fixture_sha256": "478e372e8a48c9f079fff9633f7fc21715eab1284bd7f3ebc066b6621610089e",
+  "fixture_bytes": 128,
+  "triangles": [
+    {
+      "source_triangle": 8388,
+      "source_vertices": [
+        5785,
+        5786,
+        5787
+      ],
+      "unscaled_vertices": [
+        [
+          -246.65359497070312,
+          5.305096626281738,
+          -195.90972900390625
+        ],
+        [
+          -241.92843627929688,
+          5.043722152709961,
+          -192.6081085205078
+        ],
+        [
+          -221.20606994628906,
+          5.043722152709961,
+          -221.3274688720703
+        ]
+      ],
+      "normal_y_unnormalized": 204.12092432635836
+    },
+    {
+      "source_triangle": 5483,
+      "source_vertices": [
+        3925,
+        3926,
+        3927
+      ],
+      "unscaled_vertices": [
+        [
+          -232.3114013671875,
+          8.415495872497559,
+          -207.03175354003906
+        ],
+        [
+          -235.84829711914062,
+          8.354005813598633,
+          -202.18548583984375
+        ],
+        [
+          -233.26138305664062,
+          8.555238723754883,
+          -200.2974853515625
+        ]
+      ],
+      "normal_y_unnormalized": 19.214538970962167
+    }
+  ],
+  "native_original_case": {
+    "course": "montecarlo",
+    "index": 18,
+    "query": [
+      -235.68443298339844,
+      5.072992324829102,
+      -202.36483764648438
+    ],
+    "source_triangle": 8388,
+    "material": 7,
+    "height_source": "originalRNWtrianglebarycentric",
+    "native_v_bits": "436d7aa7",
+    "native_v": 237.47911071777344,
+    "native_hint": "0091156b",
+    "native_hit_height": 8.358154296875,
+    "native_contact_flags_word": "00000000",
+    "native_query_succeeded": true,
+    "batch": 47,
+    "physics_query": [
+      -235.68443298339844,
+      202.36483764648438,
+      5.072992324829102
+    ]
+  },
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+  "emulator_commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+  "native_results_sha256": "ac0523fba9021004fa87029f6ef0a4fa9a5cd0322639a4b84ab4dfa2e4e8fa92"
+}

@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.18)
+if(NOT PLAY_SOURCE)
+    message(FATAL_ERROR "Set PLAY_SOURCE to the pinned upstream Play checkout")
+endif()
+execute_process(COMMAND git -C "${PLAY_SOURCE}" rev-parse HEAD
+    OUTPUT_VARIABLE PLAY_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE PLAY_GIT_RESULT)
+if(NOT PLAY_GIT_RESULT EQUAL 0 OR NOT PLAY_COMMIT STREQUAL "1f27232772e484bfb79364b751b84f41f4c87481")
+    message(FATAL_ERROR "Use the recorded upstream Play commit 1f27232772e484bfb79364b751b84f41f4c87481")
+endif()
+set(CMAKE_MODULE_PATH "${PLAY_SOURCE}/deps/Dependencies/cmake-modules" ${CMAKE_MODULE_PATH})
+include(Header)
+project(GT4NativeOracle)
+add_subdirectory("${PLAY_SOURCE}/Source" "${CMAKE_CURRENT_BINARY_DIR}/PlayCore")
+add_executable(gt4-native-ee-runner native_ee_runner.cpp)
+target_link_libraries(gt4-native-ee-runner PlayCore)

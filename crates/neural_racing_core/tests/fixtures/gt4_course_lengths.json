@@ -1,0 +1,582 @@
+{
+  "source": "Original RNW TrackV/selected RACE sections; Area extents are native-V navigation only, never race distances",
+  "courses": {
+    "20r60r": {
+      "source_sha256": "d40b5d06ce6498ca12ef7329f9d088520bac91fbc0249944acd24058c502d747",
+      "closed": true,
+      "length_metres": 731.2135009765625
+    },
+    "akasaka": {
+      "source_sha256": "ecf6c06e4d3b37abfa559424455231644af1685075ede1e818c6fc41b18c3480",
+      "closed": true,
+      "length_metres": 5120.904296875
+    },
+    "apricot": {
+      "source_sha256": "f91e7fc02fceaecbf5c19f212f88547cedefc36757c08590ca60daf46d3e4c79",
+      "closed": true,
+      "length_metres": 3865.43896484375
+    },
+    "assisi": {
+      "source_sha256": "5e2197daab5433c6875e9316f0feb53809bf6a3ca811d2ebc95351385dfdf0e1",
+      "closed": true,
+      "length_metres": 3398.95068359375
+    },
+    "autumn": {
+      "source_sha256": "7879301a0a2c99a18a4c9a131d6b85ffbb24f6149856a14d73550aa8ea31b4e7",
+      "closed": true,
+      "length_metres": 3035.8515625
+    },
+    "capri": {
+      "source_sha256": "af9e57c2d095bdbfe265411e02f68579a94010560ab8fbfc562de7ce52001b19",
+      "closed": true,
+      "length_metres": 4065.850830078125
+    },
+    "deepforest": {
+      "source_sha256": "c28d5dab6b3e9de6c0a1a3f859136ab1fffe9a4d9d34555e0aa0bfe41b1f304e",
+      "closed": true,
+      "length_metres": 3576.58544921875
+    },
+    "fisco": {
+      "source_sha256": "cffd30717aa2fd46aaab24591a4acedfc5568f5c0ceb77c444135ff516b8b4d8",
+      "closed": true,
+      "length_metres": 4459.1669921875
+    },
+    "fisco_old": {
+      "source_sha256": "115f90505302b53e85dfe2817f0c86e939af703f3bc8bc209b4391ca7b090fcb",
+      "closed": true,
+      "length_metres": 4447.76220703125
+    },
+    "fisco_slalom": {
+      "source_sha256": "edda51a9bf91f42f2848dfaf50cdfcbce92ef3a3696389efd50705853829bbf8",
+      "closed": false,
+      "length_metres": 425.7133383263208
+    },
+    "grandcanyon": {
+      "source_sha256": "4d8d89255e2e9f385613dc6cbfaa9f46df5d4cfcbbd33a714573d11dd1ae47a0",
+      "closed": true,
+      "length_metres": 3528.5390625
+    },
+    "grandvalley": {
+      "source_sha256": "10ce78ba0cb4d8ec05091206828e6d6abc65ace3ea0f64e1e519f19281945558",
+      "closed": true,
+      "length_metres": 4963.1630859375
+    },
+    "grandvalley_east": {
+      "source_sha256": "193ac59b6202c6742f57f9852f0d56694616fde24a1b205965980350015196c7",
+      "closed": true,
+      "length_metres": 3009.33203125
+    },
+    "gymkhana": {
+      "source_sha256": "5ee3933b31ebcd313ec7a2d1d73224f70eb2a368251d2485793ffc334f475b22",
+      "closed": false,
+      "navigation_stations_sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "navigation_only": true,
+      "length_metres": 202.26642036437988
+    },
+    "gymkhana_free": {
+      "source_sha256": "d063e2e9851963a6b84f12696e08564143e639416a204528bd957fa69601b789",
+      "closed": false,
+      "navigation_stations_sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "navigation_only": true,
+      "length_metres": 202.26642036437988
+    },
+    "gymkhana_maze": {
+      "source_sha256": "56b437604a2e7728918d71ce14c830c70453c32f033b8796ce19c8d02e928b0a",
+      "closed": false,
+      "navigation_stations_sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "navigation_only": true,
+      "length_metres": 202.26642036437988
+    },
+    "gymkhana_spiral_r": {
+      "source_sha256": "52bcf0f1d357fddf57e6adce37bee3faa533d231acc04ab9b3ef54a17afe4d53",
+      "closed": false,
+      "navigation_stations_sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "navigation_only": true,
+      "length_metres": 202.26642036437988
+    },
+    "gymkhana_spral": {
+      "source_sha256": "808f3de700b99651be57910e120f07f56cd03effb4f4a9235f6696ca3f3a126a",
+      "closed": false,
+      "navigation_stations_sha256": "698cf55ea72591f417d509584cdeb3a75f411a2f9aa4afa7461ce4aeb884ea70",
+      "navigation_only": true,
+      "length_metres": 7.57968807220459
+    },
+    "gymkhana_super": {
+      "source_sha256": "0b2278ca050c16b83f9e3ac9010ef6d80ef7c79e65904d5d6f7431ea3a52fe49",
+      "closed": false,
+      "navigation_stations_sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "navigation_only": true,
+      "length_metres": 202.26642036437988
+    },
+    "highspeedring": {
+      "source_sha256": "7231c7b087456dfb0240dd8718c25aab587cb70d3c80ed959d7565d8aba1ac7b",
+      "closed": true,
+      "length_metres": 3996.2568359375
+    },
+    "hongkong": {
+      "source_sha256": "b7c86912745e6fc56bdabb7a49ff7bbca80d27981d5d1cb9f8ef24f35f001512",
+      "closed": true,
+      "length_metres": 2869.987548828125
+    },
+    "icerace": {
+      "source_sha256": "7ffb42d2ab5d77705967f8c781b72b62631deeb57f8ad901ef4a5f0d41e2e442",
+      "closed": true,
+      "length_metres": 1098.933349609375
+    },
+    "infineon": {
+      "source_sha256": "cc392c843d920cf92b988ac614e802bc353d9589201a7d96ac0d91c39ee7a8ac",
+      "closed": true,
+      "length_metres": 4111.98828125
+    },
+    "infineon_nascar": {
+      "source_sha256": "39513672892827dd32c21f39c3869d182b8a90355a9d9cc7beb7ece763150009",
+      "closed": true,
+      "length_metres": 3189.100341796875
+    },
+    "kashiwa": {
+      "source_sha256": "94934fbc6a55066c3bd4f5102048c012c574ed624a34d7cc4008f1848ff8bcc5",
+      "closed": true,
+      "length_metres": 1344.29443359375
+    },
+    "laguna": {
+      "source_sha256": "6cc18530ab7833ffe94d05f884ce9bdb8542c5a5d5568175c47ba31404984225",
+      "closed": true,
+      "length_metres": 3767.390869140625
+    },
+    "lasvegas": {
+      "source_sha256": "2a47ecb65a2b5c27a18b3efee4dad4b0830640ffdc28509df829e0f0b71f9b02",
+      "closed": false,
+      "length_metres": 399.7010803222656
+    },
+    "midfield": {
+      "source_sha256": "4f95d3e381665d121d8354844b4944f56437e0e388120abdcf9ac4f382c4a8bf",
+      "closed": true,
+      "length_metres": 3598.097900390625
+    },
+    "mini": {
+      "source_sha256": "58886c4c342a105696e14f10bf2627b9bc93e53c9fa04354c40c471add0188bd",
+      "closed": true,
+      "length_metres": 1338.1640625
+    },
+    "montecarlo": {
+      "source_sha256": "9cb73e32c0342bd11eaeb604617c77f9cb49cee49282e5539914b2a68463430b",
+      "closed": true,
+      "length_metres": 3363.023681640625
+    },
+    "motegi": {
+      "source_sha256": "e285fd4bfbc65da1e0ef14ca510a577642f748e3e845c3006c488ca1eb8028ec",
+      "closed": true,
+      "length_metres": 5012.06591796875
+    },
+    "motegi_east": {
+      "source_sha256": "47ff3ece6ceb77ce17aeea9cd188e82791b0bc3fd73786985583358081eedb22",
+      "closed": true,
+      "length_metres": 3541.300537109375
+    },
+    "motegi_west": {
+      "source_sha256": "7432246a6dc7295d3941c07348270f13aa302838a7a77dd18649370ea880a3ff",
+      "closed": true,
+      "length_metres": 1558.2080078125
+    },
+    "new_fisco": {
+      "source_sha256": "a5cff1508d2e5ff67e6c5c2a3a4ea916141c9ddc8e1da8d03556453215dd86fc",
+      "closed": true,
+      "length_metres": 4944.87109375
+    },
+    "new_fisco_gt": {
+      "source_sha256": "9774aa59a2e2cbdaf614642d58916ab45dc17694753d0a587bf162d0ec039eb4",
+      "closed": true,
+      "length_metres": 4944.87109375
+    },
+    "newyork": {
+      "source_sha256": "87e3532d22a350f3f3f6236ae2c6548f489b7c2641015ab0699e9aa317156dd0",
+      "closed": true,
+      "length_metres": 4112.37939453125
+    },
+    "nurburgring": {
+      "source_sha256": "b4f8fa694c542eb4c8b52fbe43b9928bc9016bc7d2cbcefc2ab77e32dcc696e6",
+      "closed": true,
+      "length_metres": 20749.951171875
+    },
+    "nursnow": {
+      "source_sha256": "b4754e4e1ee8bada3a7331b15eb14cdbb1e3f8404bc5aaf5c1fceccf1e2da37e",
+      "closed": true,
+      "length_metres": 3232.3603515625
+    },
+    "oval": {
+      "source_sha256": "6f550a294f7ed9a88b3b626b2ab712a05adb85f6ff7a2e3eb3d477b484d5d19f",
+      "closed": true,
+      "length_metres": 2424.879638671875
+    },
+    "paris_rally": {
+      "source_sha256": "3c2f22df88f551e45f5df11c2542696cda7d525922a33be38660386ac1774457",
+      "closed": true,
+      "length_metres": 2459.103759765625
+    },
+    "paris_tarmac": {
+      "source_sha256": "70990c78c1c023a579c0ccce78a59991e7949edb2e086bf490654872744db403",
+      "closed": true,
+      "length_metres": 2906.705810546875
+    },
+    "r_20r60r": {
+      "source_sha256": "71fd4997d3c7a7f4cd0599438a8d7873861e1f6e541c62935d0b543c75128fdd",
+      "closed": true,
+      "length_metres": 731.2135620117188
+    },
+    "r_akasaka": {
+      "source_sha256": "12badf28cd647b1b2759780c7f0986e81d930b1221bcbd1cd694720aeae36ad4",
+      "closed": true,
+      "length_metres": 5120.90234375
+    },
+    "r_apricot": {
+      "source_sha256": "9fe31b77eb64dd30881266c4f5d52812cea7e7c56c5a8d3c441c9f9dde236c19",
+      "closed": true,
+      "length_metres": 3865.437255859375
+    },
+    "r_assisi": {
+      "source_sha256": "566beb4abf905ed3fcda21561b274ccb501961fca37288b778146835c8bac865",
+      "closed": true,
+      "length_metres": 3398.951416015625
+    },
+    "r_autumn": {
+      "source_sha256": "8491551322d42b787630335fcb4fa8e5b9e4b9b1cade9437ef1af63d2f49acf7",
+      "closed": true,
+      "length_metres": 3035.852783203125
+    },
+    "r_capri": {
+      "source_sha256": "0780e4233915f854bdfc53b71fc4c81de307984e7b3e8882426719a90b95e12a",
+      "closed": true,
+      "length_metres": 4065.852294921875
+    },
+    "r_deepforest": {
+      "source_sha256": "847cfdbbf7b9b9914e6cfb4bd86003db215a9de346640af42649723d8a6eb688",
+      "closed": true,
+      "length_metres": 3576.583984375
+    },
+    "r_grandcanyon": {
+      "source_sha256": "e781e93b4e4d412edca5778b7771244b6a36a75b9ab716629881199850efa237",
+      "closed": true,
+      "length_metres": 3528.538818359375
+    },
+    "r_grandvalley": {
+      "source_sha256": "21b6f9915ce7ca83a6e24870285663c4fdb6e4845d047bcee1875dbc201f0fca",
+      "closed": true,
+      "length_metres": 4963.1611328125
+    },
+    "r_grandvalley_east": {
+      "source_sha256": "7f55132b77ba7ac95f5cc2d07a814df069979f4abf075ddec74656e971502ca2",
+      "closed": true,
+      "length_metres": 3009.333984375
+    },
+    "r_highspeedring": {
+      "source_sha256": "099a97a189541772a950defe84b2d16b7b3d4bbef19dbf68f3638435a13c1db4",
+      "closed": true,
+      "length_metres": 3996.2568359375
+    },
+    "r_hongkong": {
+      "source_sha256": "a6874087ea32a98cc30955081b8f250b04ab62526f03aabda883f14a0c199ecd",
+      "closed": true,
+      "length_metres": 2869.98779296875
+    },
+    "r_icerace": {
+      "source_sha256": "abac163c131c9f4d373629612d783469ab1eed4a07f475d31561a650104c16d0",
+      "closed": true,
+      "length_metres": 1098.9334716796875
+    },
+    "r_kashiwa": {
+      "source_sha256": "bbca15fd27f66be877fd8509419199747adab7ef25f5197c4feb55e47b9d1161",
+      "closed": true,
+      "length_metres": 1344.2943115234375
+    },
+    "r_midfield": {
+      "source_sha256": "6ed188822662160360a14ae8dbbcdc88f773a525efd1020d603d705b17b717fa",
+      "closed": true,
+      "length_metres": 3598.097900390625
+    },
+    "r_mini": {
+      "source_sha256": "a9736e0faa536d54b1c97d41e5ccfd6b2240a323647219826110bd359da6920c",
+      "closed": true,
+      "length_metres": 1338.16357421875
+    },
+    "r_newyork": {
+      "source_sha256": "09ef092cb6eaff49b142f3903838da0016f2b73bc339b124fca7898ce8d5f429",
+      "closed": true,
+      "length_metres": 4112.3779296875
+    },
+    "r_nursnow": {
+      "source_sha256": "5b7efeae308ef619f9d5f86695ee3cf2022f1b8efd825218a16746a6569d83d1",
+      "closed": true,
+      "length_metres": 3232.360595703125
+    },
+    "r_paris_rally": {
+      "source_sha256": "87080f992b5473dd9e94b6be619af93b257b693a6cc9fb3284beea2b77b3d832",
+      "closed": true,
+      "length_metres": 2459.104248046875
+    },
+    "r_paris_tarmac": {
+      "source_sha256": "09ba812a5482d1e750d54dd348b0e83181f1ece1efd4f96f17aa196307601fad",
+      "closed": true,
+      "length_metres": 2906.706298828125
+    },
+    "r_route5": {
+      "source_sha256": "d0b8783a35917a858869acfd010047753a0862198ca1bb37f4c1a91cca299dde",
+      "closed": true,
+      "length_metres": 3773.231689453125
+    },
+    "r_route5_club": {
+      "source_sha256": "c28e770ba218491c975f9cd12fc44e2813e35c5ecf12a8904c559802900cbc43",
+      "closed": true,
+      "length_metres": 2445.0390625
+    },
+    "r_seattle": {
+      "source_sha256": "625c6abf88a3324ab34e5734f7542561cc76d75ad7697e4fee16ad070b644121",
+      "closed": true,
+      "length_metres": 3863.208984375
+    },
+    "r_seoul": {
+      "source_sha256": "869d679d7dc673c1e6349c3e84ee1ec764a91d4e3304260d9de6aaa5a211553d",
+      "closed": true,
+      "length_metres": 2986.79345703125
+    },
+    "r_smtsouth": {
+      "source_sha256": "7a54cdd6174f12bdbfef7aae494d50eb0fca9b0839542e6166995eaeaf4d95a9",
+      "closed": true,
+      "length_metres": 3268.60986328125
+    },
+    "r_tahiti_maze": {
+      "source_sha256": "105e2263bbd26543874e69d92d163df12c2aedf368500fb4f2b086d1ca1dc7d1",
+      "closed": true,
+      "length_metres": 3652.542724609375
+    },
+    "r_trialmt": {
+      "source_sha256": "52fde9898ce043232f8c2727bb0b98eddc1c5a4a3b5f01570d70951746f3cd8f",
+      "closed": true,
+      "length_metres": 3922.018310546875
+    },
+    "r_yosemite": {
+      "source_sha256": "a35a814f87fcf6797924d630cfef5d57d0c6f70e613ec073283d3aef34928393",
+      "closed": true,
+      "length_metres": 4872.96826171875
+    },
+    "r_yosemite_dirt": {
+      "source_sha256": "5bef85f94088442857508f59ea0fcee318648273c3b5fd2566dc7feb49433d10",
+      "closed": true,
+      "length_metres": 3484.414306640625
+    },
+    "r_yosemite_dirt_short": {
+      "source_sha256": "88b133852ba103a9fa93b7183923ecc9150aa3dcc769a433b66b1678394838bb",
+      "closed": true,
+      "length_metres": 1910.934814453125
+    },
+    "route5": {
+      "source_sha256": "a4a55765cd499a8529391849a5bcacc6fb7001d3b91195587bfa0a1c54d4ae29",
+      "closed": true,
+      "length_metres": 3773.233154296875
+    },
+    "route5_club": {
+      "source_sha256": "e4a871258d47593dcf0cae39b48ecb287868282a9b4e48564abaf68b4945d7f7",
+      "closed": true,
+      "length_metres": 2445.0390625
+    },
+    "sarthe": {
+      "source_sha256": "6b9d0c1679e1e627b0ddd83099a3c28037b45934c52425926cef45b0543e480f",
+      "closed": true,
+      "length_metres": 13633.5537109375
+    },
+    "sarthe24": {
+      "source_sha256": "3e9e417fc5fbe14f9f21c53f18bb9b27b41fd8594935f21e79330c2241c9fecb",
+      "closed": true,
+      "length_metres": 13633.5537109375
+    },
+    "sarthe_old": {
+      "source_sha256": "b8910046140b759a26a40b9632a50e0ac95770d857f9097d7c6fb7002bce7854",
+      "closed": true,
+      "length_metres": 13633.5537109375
+    },
+    "sarthe_old24": {
+      "source_sha256": "4c4eb5fc6451db3e313d05608ff157e5868bbb06ff74bc1c739ef0646d7411e7",
+      "closed": true,
+      "length_metres": 13633.5537109375
+    },
+    "seattle": {
+      "source_sha256": "59bf13090642f3ae7c42cae75c8d1ad8548691b38806a781879e75749d51552c",
+      "closed": true,
+      "length_metres": 3863.209716796875
+    },
+    "seoul": {
+      "source_sha256": "b0622c66703b66b8d56ced2992bf3053385c0967457577d3dd11bed4cd0f1d31",
+      "closed": true,
+      "length_metres": 2986.793701171875
+    },
+    "smtsouth": {
+      "source_sha256": "bcf4322386e0129eca51a734de1222c9b2274b3f0d76fe0003fbfc193e8de988",
+      "closed": true,
+      "length_metres": 3268.60986328125
+    },
+    "ss_brooklyn": {
+      "source_sha256": "e7377881c6d1f6da6a089cba83c4a683cc9a800427329f0d8a40ecb45dd2b484",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 540.7796630859375
+    },
+    "ss_forum": {
+      "source_sha256": "c56388d86f591a7e524e126ac9fb343c47f4265d27d992d189a14d294e492238",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 170.18980407714844
+    },
+    "ss_fremont": {
+      "source_sha256": "0a51de11827eab4947d4243d0c3aab963f1641d21d99df7eceeefa7cc8ba8444",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 540.7797241210938
+    },
+    "ss_gion": {
+      "source_sha256": "fcd017ad62edabd23ef6206aaec1ec43fb0eb58672fb3cec08f8747edd999506",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 183.3428192138672
+    },
+    "ss_grandcanyon": {
+      "source_sha256": "be46054358701308485dce896d84ad5d7b3d50da7c3a78f5b84bb3fccee8ce5d",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 540.7797241210938
+    },
+    "ss_louisburg": {
+      "source_sha256": "48fbe1ef7311cdc0a4a015b638fd93d171709d055e8366219e42be56f0caf64e",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 113.42269897460938
+    },
+    "ss_nanzenji": {
+      "source_sha256": "a43c602f5b9968cac2431e69834a7a2be9ca812c7e2c8fc03c7b8ecf0d19cb1a",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 229.00106811523438
+    },
+    "ss_rialt": {
+      "source_sha256": "4a08b95c70daf0e5d984f036ec8e429fd2c67d14679659e3efdd73c5f98280d0",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 2874.44775390625
+    },
+    "ss_sagano": {
+      "source_sha256": "2067ed85e4e3e3b97cf8a245d1fde39cf9adc261f85ef16ef01e67a063f62720",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 120.9329833984375
+    },
+    "ss_sanmarco": {
+      "source_sha256": "6230caf40fe36bb41c19e688c47177e48844f41945f1d642e97a645c88c67b24",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 358.4007263183594
+    },
+    "ss_shibuya": {
+      "source_sha256": "e84912abd395e838f12743086297ddcf97a6060fb7718772713aad381e767d9c",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 242.94125366210938
+    },
+    "ss_snow": {
+      "source_sha256": "8f3cb5646326b932a80d2c3d1c44f603703587345158fe298228855755b010b3",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 4895.412109375
+    },
+    "ss_times": {
+      "source_sha256": "f3d92c0df51837eb88762d2148f5471939ad67e758bc5fab2409b869f1edc6ca",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 1298.9071044921875
+    },
+    "ss_tsukiji": {
+      "source_sha256": "677c4135ffd6dc74357a7868b6a2a36fc27a21a1f1ae50279414e177911e0d32",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 456.5684814453125
+    },
+    "ss_tsumago": {
+      "source_sha256": "d4c05ec4c6cc5bd70e56d042ab980bf2a7ad6995692cde1bbe1d1834fa7abd53",
+      "closed": false,
+      "navigation_only": true,
+      "length_metres": 139.23312377929688
+    },
+    "suzuka": {
+      "source_sha256": "2b947983d520f82e875b70ffce5cfc718552a1a8fbc43d2e4a913ac20e6d7965",
+      "closed": true,
+      "length_metres": 5905.51025390625
+    },
+    "suzuka_east": {
+      "source_sha256": "cdb8209ea6fa7c7f5c3cf3a953413511e6a2fa32c73def184ed25c9d0fa7bcf1",
+      "closed": true,
+      "length_metres": 2311.666259765625
+    },
+    "suzuka_west": {
+      "source_sha256": "bdacdf032452b59ad318da9d0b27504eac0cd913b23d7cb094c48c80c1580a8a",
+      "closed": true,
+      "length_metres": 3548.6357421875
+    },
+    "tahiti_maze": {
+      "source_sha256": "aefd4aca1ce252d3be3b25d940b7305853dbff50251c14d7804c12399dcaa481",
+      "closed": true,
+      "length_metres": 3652.54443359375
+    },
+    "testcourse": {
+      "source_sha256": "7f95555f8ee42a62448a0cd1076369e664ec7c69e398d1064c8450b6bee2c728",
+      "closed": true,
+      "length_metres": 10342.2626953125
+    },
+    "testcourse_1000m": {
+      "source_sha256": "cec6f44819c37dbe355bcb45ef9ce4d4eea77df30b2f178283adeb7fe3580e94",
+      "closed": false,
+      "length_metres": 1000.00390625
+    },
+    "testcourse_100m": {
+      "source_sha256": "9ee07f1808c3be34b36afb92d311f43673a3fb3f73ee693d3eaa6298cce1a55b",
+      "closed": false,
+      "length_metres": 100.0048828125
+    },
+    "testcourse_200m": {
+      "source_sha256": "853be3b9a2575d9c98f6beb1d98f2ce87ea2eb2f0b50c84491b9f1ea8fd8ee79",
+      "closed": false,
+      "length_metres": 200.0048828125
+    },
+    "testcourse_500m": {
+      "source_sha256": "c60c3dbe2ffa91f67b320986d49f101d66f0a9c494f4039effab07850a9bf1b8",
+      "closed": false,
+      "length_metres": 500.0048828125
+    },
+    "trialmt": {
+      "source_sha256": "39ca1f5ef249ffc3b06299b2871ef9578cd2f72bccb556c619ff862998d91ae4",
+      "closed": true,
+      "length_metres": 3922.0185546875
+    },
+    "tsukuba": {
+      "source_sha256": "b60cd2cb04b3a88acc5047bb4fce79e1b0d92f10dd648d2533cf17e90dec7d62",
+      "closed": true,
+      "length_metres": 2115.0693359375
+    },
+    "tsukuba_wet": {
+      "source_sha256": "d515ee60eecdc0242d701ca279b1ab6eaff7bfae09614d76e97e84e1f320adbb",
+      "closed": true,
+      "length_metres": 2115.0693359375
+    },
+    "yosemite": {
+      "source_sha256": "03e8e7004c1fb5a95e7a0b7fb18a84cc47dc8c119b8bf288fd0b8be94214a0e2",
+      "closed": true,
+      "length_metres": 4872.96923828125
+    },
+    "yosemite_dirt": {
+      "source_sha256": "9f15b8846b7654120703e78abf8ce13b44f9fb5c1f0adbe634d15b5244707eac",
+      "closed": true,
+      "length_metres": 3484.41357421875
+    },
+    "yosemite_dirt_short": {
+      "source_sha256": "fe96f4539adb08e553af4bbe039e85b95ed4798ef863ca3c583c89bc1a3c7f36",
+      "closed": true,
+      "length_metres": 1910.9346923828125
+    }
+  }
+}

@@ -10,6 +10,34 @@ fn car(speed_mps: f64) -> Env {
 }
 
 #[test]
+fn keyboard_turn_from_start_does_not_spin_out() {
+    for direction in [-1.0, 1.0] {
+        let mut env = car(5.0);
+        let mut worst_slip: f64 = 0.0;
+        for tick in 0..20 {
+            let result = env.step(Action {
+                steer: direction,
+                throttle: 1.0,
+            });
+            // CG sideslip includes ordinary rear-axle rolling in a tight turn.
+            // Rear-axle slip measures the loss of grip that starts a spin.
+            let rear_slip = ((env.vy - WHEELBASE * 0.5 * env.yaw_rate) / env.vx.abs().max(1.0))
+                .atan()
+                .to_degrees();
+            worst_slip = worst_slip.max(rear_slip.abs());
+            assert!(
+                rear_slip.abs() < 12.0,
+                "keyboard launch at {:.2}s: rear slip={rear_slip:.2}°, CG slip={:.2}°, speed={:.2}m/s, yaw={:.2}rad/s, steer={:.3}, grip={:?}",
+                (tick + 1) as f64 * DECISION_DT, env.slip_angle_deg,
+                env.speed / UNITS_PER_METRE, env.yaw_rate, env.steer_angle, env.tyre_usage
+            );
+            assert!(!result.done, "launch left the road at tick {tick}");
+        }
+        println!("direction={direction}: worst rear slip={worst_slip:.2}°");
+    }
+}
+
+#[test]
 fn steering_cannot_snap_between_opposite_locks() {
     let mut env = car(2.0);
     for i in 0..12 {

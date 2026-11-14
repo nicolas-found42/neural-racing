@@ -1,5 +1,5 @@
 use neural_racing_core::{
-    wrap_angle, Action, Env, Vec2, MAX_LATERAL_ACCEL, MAX_SPEED, MAX_STEER_ANGLE, UNITS_PER_METRE,
+    vehicle::steering_limit, wrap_angle, Action, Env, Vec2, MAX_LATERAL_ACCEL, UNITS_PER_METRE,
     WHEELBASE,
 };
 
@@ -14,12 +14,19 @@ pub fn pursuit(env: &Env, cruise: f64) -> Action {
         .rotated(env.heading);
     let hit = env.track.nearest_on_centerline(rear);
     let lookahead = 2.5 * UNITS_PER_METRE + env.speed * 0.65;
-    let target = env.track.arc_point(hit.arc + lookahead);
+    let target_arc = hit.arc + lookahead;
+    // An open finish is a crossing plane. Continue the test driver's target
+    // along its final tangent, so it never turns back toward a clamped endpoint.
+    let target = if !env.track.closed && target_arc > env.track.lap_length {
+        env.track.arc_point(env.track.lap_length)
+            + env.track.arc_tangent(env.track.lap_length) * (target_arc - env.track.lap_length)
+    } else {
+        env.track.arc_point(target_arc)
+    };
     let delta = target - rear;
     let alpha = wrap_angle(delta.angle() - env.heading);
     let wheel_angle = (2.0 * WHEELBASE * alpha.sin() / delta.norm()).atan();
-    let steer = (wheel_angle * (1.0 + 0.45 * (env.vx / MAX_SPEED).powi(2)) / MAX_STEER_ANGLE)
-        .clamp(-1.0, 1.0);
+    let steer = (wheel_angle / steering_limit(env.vx)).clamp(-1.0, 1.0);
     let horizon = (env.speed * env.speed / (2.0 * 8.0 * UNITS_PER_METRE) + 30.0 * UNITS_PER_METRE)
         .max(35.0 * UNITS_PER_METRE);
     let radius = env.track.tightest_corner_ahead(hit.arc, horizon);

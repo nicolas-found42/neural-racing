@@ -73,6 +73,10 @@ pub struct StepOutcome {
 
 #[derive(Clone)]
 pub struct Env {
+    pub(crate) native_vehicle: crate::gt4::runtime::RuntimeVehicle,
+    pub(crate) vehicle_snapshot: [f64; 8],
+    pub(crate) vehicle_origin: [f64; 3],
+    pub(crate) vehicle_height_origin: f32,
     pub track: Track,
     pub laps: i32,
     pub x: f64,
@@ -99,6 +103,9 @@ pub struct Env {
     pub lateral_offset: f64,
     /// Half the road width under the car, refreshed every decision.
     pub road_half_width: f64,
+    /// Full road width at the sensed route position, independent of which
+    /// side of an asymmetric guide the car occupies.
+    pub road_width: f64,
     pub speed: f64,
     /// Braking-distance-aware limit at the car's current arc.
     pub speed_profile: f64,
@@ -125,9 +132,10 @@ pub struct Env {
     pub path: [Vec2; SUBSTEPS],
     /// Observation of the current state: state features then normalized rays.
     pub obs: [f32; OBS_DIM],
-    prev_arc: f64,
+    pub(crate) prev_arc: f64,
     start_gate: usize,
     paid_checkpoint: i32,
+    section_practice: bool,
     ray_angles: [f64; NUM_RAYS],
 }
 
@@ -135,12 +143,17 @@ impl Env {
     /// A fresh race: `laps` laps on `track`.
     pub fn new(track: Track, laps: i32) -> Self {
         assert!(laps >= 1, "a race needs at least one lap");
+        let laps = if track.closed { laps } else { 1 };
         let mut ray_angles = [0.0; NUM_RAYS];
         for (index, angle) in ray_angles.iter_mut().enumerate() {
             let t = index as f64 / (NUM_RAYS - 1) as f64;
             *angle = -0.6 * std::f64::consts::PI + 1.2 * std::f64::consts::PI * t;
         }
         let mut env = Self {
+            native_vehicle: crate::gt4::runtime::RuntimeVehicle::new(0.0, 0.0, 0.0, 0.0),
+            vehicle_snapshot: [0.0; 8],
+            vehicle_origin: [0.0; 3],
+            vehicle_height_origin: 0.0,
             track,
             laps,
             x: 0.0,
@@ -163,6 +176,7 @@ impl Env {
             slip_angle_deg: 0.0,
             lateral_offset: 0.0,
             road_half_width: 0.0,
+            road_width: 0.0,
             speed: 0.0,
             speed_profile: START_SPEED,
             lateral_velocity: 0.0,
@@ -191,6 +205,7 @@ impl Env {
             prev_arc: 0.0,
             start_gate: 0,
             paid_checkpoint: 0,
+            section_practice: false,
             ray_angles,
         };
         env.reset();
@@ -198,14 +213,33 @@ impl Env {
     }
 
     pub fn total_gates(&self) -> i32 {
-        CHECKPOINT_COUNT as i32 * self.laps
+        if self.track.free_roam {
+            0
+        } else {
+            CHECKPOINT_COUNT as i32 * self.laps
+        }
     }
 
-    /// Real circuits allow the configured laps at a beginner average 10 m/s,
-    /// plus 90 seconds for braking and recovery. Procedural training retains its original budget.
+    /// Real roads allow a beginner average 10 m/s; recovered dirt/snow routes
+    /// allow 4 m/s plus 90 seconds for cautious recovery. These are simulator
+    /// budgets, independent of GT4 license medal times. Procedural budgets stay fixed.
     pub fn max_steps(&self) -> i32 {
+        if self.track.free_roam {
+            return i32::MAX;
+        }
         if self.track.circuit.is_some() {
-            ((self.track.lap_length * self.laps as f64 / (10.0 * crate::UNITS_PER_METRE) + 90.0)
+            let beginner_speed = match self.track.circuit {
+                Some(crate::Circuit::Gt4(index)) => {
+                    match crate::course_catalog::courses()[usize::from(index)].condition {
+                        crate::course_catalog::CourseCondition::Dirt
+                        | crate::course_catalog::CourseCondition::Snow => 4.0,
+                        _ => 10.0,
+                    }
+                }
+                _ => 10.0,
+            };
+            ((self.track.lap_length * self.laps as f64 / (beginner_speed * crate::UNITS_PER_METRE)
+                + 90.0)
                 / crate::DECISION_DT)
                 .ceil() as i32
         } else {
@@ -215,7 +249,11 @@ impl Env {
 
     /// Unique completed laps, unaffected by reversing over a paid gate.
     pub fn credited_laps(&self) -> i32 {
-        self.paid_checkpoint / CHECKPOINT_COUNT as i32
+        if self.track.closed {
+            self.paid_checkpoint / CHECKPOINT_COUNT as i32
+        } else {
+            0
+        }
     }
 
     pub fn position(&self) -> Vec2 {
@@ -229,11 +267,38 @@ impl Env {
     /// sequence rotates with the start, so completing it still requires one
     /// entire circuit, never a shortcut or a partial lap.
     pub fn reset_at_checkpoint(&mut self, checkpoint: usize) {
-        self.start_gate = checkpoint % CHECKPOINT_COUNT;
+        self.start_gate = if self.track.closed {
+            checkpoint % CHECKPOINT_COUNT
+        } else {
+            0
+        };
         self.reset();
     }
 
+    /// A curriculum section, never credited as a checkpoint, lap or race goal.
+    /// The caller owns its exit condition; physics and observations stay shared.
+    pub fn reset_for_section(&mut self, arc: f64, speed: f64) {
+        self.reset();
+        self.section_practice = true;
+        let start = self.track.arc_point(arc);
+        self.x = start.x;
+        self.y = start.y;
+        self.heading = self.track.arc_tangent(arc).angle();
+        self.vx = speed.clamp(0.0, crate::MAX_SPEED);
+        self.speed = self.vx;
+        self.prev_arc = arc;
+        self.reset_vehicle();
+        self.path = [self.position(); SUBSTEPS];
+        let hit = self.sense();
+        self.prev_arc = hit.arc;
+    }
+
     pub fn reset(&mut self) {
+        self.section_practice = false;
+        if !self.track.closed {
+            self.laps = 1;
+            self.start_gate = 0;
+        }
         let arc = self.track.lap_length * self.start_gate as f64 / CHECKPOINT_COUNT as f64;
         let start = self.track.arc_point(arc);
         self.x = start.x;
@@ -257,6 +322,7 @@ impl Env {
         self.slip_angle_deg = 0.0;
         self.lateral_offset = 0.0;
         self.road_half_width = 0.0;
+        self.road_width = 0.0;
         self.speed = START_SPEED;
         self.speed_profile = START_SPEED;
         self.lateral_velocity = 0.0;
@@ -280,6 +346,8 @@ impl Env {
             throttle: 0.0,
         };
         self.rays = [RAY_RANGE; NUM_RAYS];
+        self.prev_arc = arc;
+        self.reset_vehicle();
         self.path = [self.position(); SUBSTEPS];
         let hit = self.sense();
         self.prev_arc = hit.arc;
@@ -329,7 +397,9 @@ impl Env {
         let mut components = RewardComponents {
             // Distance advanced along the track, in metres, scaled to keep the
             // return small enough to regress with a Huber value loss.
-            progress: forward * DECISION_DT / crate::UNITS_PER_METRE * PROGRESS_WEIGHT,
+            // Extra speed outside the braking envelope must not buy more reward.
+            progress: forward.min(self.speed_profile) * DECISION_DT / crate::UNITS_PER_METRE
+                * PROGRESS_WEIGHT,
             slip: -0.02 * (self.vy.abs() / crate::UNITS_PER_METRE) * DECISION_DT,
             // A race rewards forward motion. Parking before a corner must not
             // beat attempting it; retain room for very slow hairpin recovery.
@@ -368,7 +438,9 @@ impl Env {
         let limit = self
             .speed_profile
             .max(PROFILE_MIN_SPEED * crate::UNITS_PER_METRE);
-        let excess = (self.speed / limit - 1.0).clamp(0.0, 2.0);
+        // Kinetic energy, hence stopping distance, grows with speed squared.
+        // This becomes informative on the approach, before a wall terminates it.
+        let excess = ((self.speed / limit).powi(2) - 1.0).clamp(0.0, 4.0);
         if excess > 0.0 {
             components.excess_speed = -SPEED_EXCESS_PENALTY * excess;
             reward += components.excess_speed;
@@ -377,64 +449,81 @@ impl Env {
         // above, a policy that has never survived the first corner learns that
         // crawling minimises crash frequency and parks the throttle; paying for
         // the deficit keeps acceleration on the gradient.
-        let deficit = (1.0 - self.speed / limit).clamp(0.0, 1.0);
+        // Leave a grip margin instead of rewarding a razor-edge corner entry.
+        let deficit = (1.0 - self.speed / (0.85 * limit)).clamp(0.0, 1.0);
         if deficit > 0.0 {
             components.speed_shortfall = -SPEED_SHORTFALL_PENALTY * deficit;
             reward += components.speed_shortfall;
         }
 
         let half_lap = self.track.lap_length / 2.0;
-        let delta = py_mod(
-            nearest.arc - self.prev_arc + half_lap,
-            self.track.lap_length,
-        ) - half_lap;
+        let delta = if self.track.closed {
+            py_mod(
+                nearest.arc - self.prev_arc + half_lap,
+                self.track.lap_length,
+            ) - half_lap
+        } else {
+            nearest.arc - self.prev_arc
+        };
         if delta.abs() < 200.0 {
             self.distance += delta;
         }
         self.prev_arc = nearest.arc;
 
         let gate_count = CHECKPOINT_COUNT as i32;
-        let done = if nearest.lateral.abs() > nearest.half_width {
+        let done = if self.off_track
+            || (!self.track.free_roam && nearest.lateral.abs() > nearest.half_width)
+        {
             self.off_track = true;
             components.off_track = -OFF_TRACK_PENALTY;
             reward += components.off_track;
             true
         } else {
-            if self.next_checkpoint > 0
-                && self.track.checkpoint_crossing(
-                    ((self.next_checkpoint - 1 + self.start_gate as i32) % gate_count) as usize,
+            if !self.section_practice && !self.track.free_roam {
+                if self.next_checkpoint > 0
+                    && self.track.checkpoint_crossing(
+                        ((self.next_checkpoint - 1 + self.start_gate as i32) % gate_count) as usize,
+                        previous,
+                        pos,
+                    ) == -1
+                {
+                    self.next_checkpoint -= 1;
+                    self.laps_completed = if self.track.closed {
+                        self.next_checkpoint / gate_count
+                    } else {
+                        0
+                    };
+                }
+                if self.track.checkpoint_crossing(
+                    ((self.next_checkpoint + self.start_gate as i32) % gate_count) as usize,
                     previous,
                     pos,
-                ) == -1
-            {
-                self.next_checkpoint -= 1;
-                self.laps_completed = self.next_checkpoint / gate_count;
-            }
-            if self.track.checkpoint_crossing(
-                ((self.next_checkpoint + self.start_gate as i32) % gate_count) as usize,
-                previous,
-                pos,
-            ) == 1
-            {
-                self.next_checkpoint += 1;
-                self.laps_completed = self.next_checkpoint / gate_count;
-                if self.next_checkpoint > self.paid_checkpoint {
-                    self.paid_checkpoint = self.next_checkpoint;
-                    components.checkpoint += CHECKPOINT_BONUS;
-                    reward += CHECKPOINT_BONUS;
-                    if self.next_checkpoint % gate_count == 0 {
-                        components.lap += LAP_BONUS;
-                        // Later consecutive laps are worth more; a full five-lap
-                        // stint earns a separate finish bonus. Never repay a gate.
-                        components.endurance += 3.0 * (self.laps_completed - 1) as f64;
-                        if self.laps_completed == self.laps && self.laps >= 5 {
-                            components.endurance += 30.0;
+                ) == 1
+                {
+                    self.next_checkpoint += 1;
+                    self.laps_completed = if self.track.closed {
+                        self.next_checkpoint / gate_count
+                    } else {
+                        0
+                    };
+                    if self.next_checkpoint > self.paid_checkpoint {
+                        self.paid_checkpoint = self.next_checkpoint;
+                        components.checkpoint += CHECKPOINT_BONUS;
+                        reward += CHECKPOINT_BONUS;
+                        if self.track.closed && self.next_checkpoint % gate_count == 0 {
+                            components.lap += LAP_BONUS;
+                            // Later consecutive laps are worth more; a full five-lap
+                            // stint earns a separate finish bonus. Never repay a gate.
+                            components.endurance += 3.0 * (self.laps_completed - 1) as f64;
+                            if self.laps_completed == self.laps && self.laps >= 5 {
+                                components.endurance += 30.0;
+                            }
+                            reward += LAP_BONUS + components.endurance;
                         }
-                        reward += LAP_BONUS + components.endurance;
                     }
                 }
             }
-            if self.next_checkpoint == self.total_gates() {
+            if !self.track.free_roam && self.next_checkpoint == self.total_gates() {
                 self.lap_done = true;
                 let pace = (1.0 - self.steps as f64 / self.max_steps() as f64).max(0.0);
                 components.lap += FAST_LAP_BONUS * pace;
@@ -491,15 +580,18 @@ impl Env {
     /// Refreshes rays, centerline error and the observation vector.
     fn sense(&mut self) -> crate::track::CenterlineHit {
         let pos = self.position();
-        let hit = self.track.nearest_on_centerline(pos);
+        let height = self.vehicle_height_origin + self.native_vehicle.car.f32(0x10c);
+        let hit = self.track.nearest_on_centerline_at_height(pos, height);
         let mut angles = [0.0f64; NUM_RAYS];
         for (slot, relative) in angles.iter_mut().zip(&self.ray_angles) {
             *slot = self.heading + relative;
         }
-        self.track.cast_rays_into(pos, &angles, &mut self.rays);
+        self.track
+            .cast_rays_into_at_height(pos, height, hit.arc, &angles, &mut self.rays);
         self.min_ray = self.rays.iter().copied().fold(RAY_RANGE, f64::min);
         self.lateral_offset = hit.lateral;
         self.road_half_width = hit.half_width;
+        self.road_width = self.track.arc_full_width(hit.arc);
         self.heading_error = wrap_angle(self.heading - hit.tangent.angle());
         self.speed_profile = self.track.speed_profile(hit.arc);
         let (sin_h, cos_h) = self.heading.sin_cos();
@@ -670,5 +762,45 @@ mod endurance_tests {
             .reward,
             0.0
         );
+    }
+}
+
+#[cfg(test)]
+mod open_course_tests {
+    use super::*;
+    #[test]
+    fn crossing_the_recovered_sprint_finish_ends_a_route_without_lap_credit() {
+        let circuit = crate::Circuit::lookup("gt4-fisco_slalom").expect("source slalom course");
+        let track = circuit.try_build().unwrap();
+        assert!(!track.closed && !track.free_roam);
+        let length = track.lap_length;
+        let mut env = Env::new(track, 5);
+        assert_eq!(env.laps, 1);
+        env.reset_for_section(
+            length - 0.5 * crate::UNITS_PER_METRE,
+            5.0 * crate::UNITS_PER_METRE,
+        );
+        env.section_practice = false;
+        env.next_checkpoint = CHECKPOINT_COUNT as i32 - 1;
+        env.paid_checkpoint = env.next_checkpoint;
+        for _ in 0..10 {
+            let result = env.step(Action {
+                steer: 0.0,
+                throttle: 0.0,
+            });
+            if result.done {
+                break;
+            }
+        }
+        assert!(env.lap_done, "source finish was not crossed: position {:?}, gate {}, offset {}, off_track {}, endpoint {:?}, lastgate {:?}, start {:?}, heading {}",env.position(),env.next_checkpoint,env.lateral_offset,env.off_track,env.track.arc_point(length),env.track.gates().last(),env.track.start,env.heading);
+        assert_eq!(env.credited_laps(), 0);
+        assert_eq!(env.laps_completed, 0);
+        assert_eq!(env.next_checkpoint, env.total_gates());
+        let result = env.step(Action {
+            steer: 1.0,
+            throttle: 1.0,
+        });
+        assert!(result.done);
+        assert_eq!(result.reward, 0.0);
     }
 }

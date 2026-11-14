@@ -1,0 +1,51 @@
+{
+  "prior_published_geometry_sha256": "f44e4179c3a88210bdc15965abe3b7ef1c7d22a197f2f776de565381702bf2e1",
+  "purpose": "Frozen established navigation fallback; legacy/nonascending source lanes are not consumed; LasVegas ADLN wrap failed native-progress ordering at start",
+  "courses": [
+    {
+      "id": "testcourse_100m",
+      "sha256": "f3be6320909153d3f9e9139fd2e02a65c10cfda3ed1d9e175285437e694170c5",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "fisco_slalom",
+      "sha256": "f953ccd352d7fe32703f27c676706005a4948a68cb40ca43bfd8a7d412145641",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "lasvegas",
+      "sha256": "d01736fe94549f7be9e718b8f72da00b2373c0ea6452b16ac866c9e7d40832e6",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana",
+      "sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana_free",
+      "sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana_maze",
+      "sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana_spiral_r",
+      "sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana_super",
+      "sha256": "8f61625dd82d6ad841bdfaf041084f032363c362e2180c0f5462ec959e551280",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    },
+    {
+      "id": "gymkhana_spral",
+      "sha256": "698cf55ea72591f417d509584cdeb3a75f411a2f9aa4afa7461ce4aeb884ea70",
+      "source": "Prior original-RNW checkpoint/manual-area navigation, source-mesh and original native getV verified; baseline only, not painted road edges"
+    }
+  ]
+}

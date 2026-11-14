@@ -1,0 +1,27 @@
+{
+  "scope": "Exact COURSE IDs joined to all110 source course resources; no fuzzy aliases or substitute circuits",
+  "course_dbt_sha256": "32d4337002bcdcf9ebcec3d9bf245c9c99fbf3cdc0771c69270cb6c81c978949",
+  "course_idi_sha256": "7f2618114eb7ca93b904d1307300ecd9db763ef04bc2f10cd70f7144fa1f8984",
+  "course_rows": 110,
+  "legacy": [
+    {
+      "slug": "monza",
+      "layout": "Monza GP (5,793 m)",
+      "verified_gt4_aliases": [],
+      "action": "retain geographic map"
+    },
+    {
+      "slug": "silverstone",
+      "layout": "Current Silverstone GP (5,891 m), Hamilton Straight/Arena",
+      "verified_gt4_aliases": [],
+      "action": "retain geographic map"
+    },
+    {
+      "slug": "red-bull-ring",
+      "layout": "Red Bull Ring GP (4,326 m), F1 layout without MotoGP chicane",
+      "verified_gt4_aliases": [],
+      "action": "retain geographic map"
+    }
+  ],
+  "note": "No exact counterpart or verified identity alias for these three layouts is present in the source join. HighSpeedRing and Nurburgring are distinct identities, not replacements for RedBullRing."
+}

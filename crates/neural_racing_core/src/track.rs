@@ -1,8 +1,8 @@
-//! Closed road geometry shared by real circuits and seeded procedural courses.
+//! Road geometry shared by real circuits and seeded procedural courses.
 
 use std::collections::HashMap;
 use std::f64::consts::TAU;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::rng::Rng;
 use crate::{
@@ -58,6 +58,18 @@ pub struct Bounds {
 
 #[derive(Clone)]
 pub struct Track {
+    /// Open courses end at the source finish; no synthetic return road is added.
+    pub closed: bool,
+    /// Original non-lap driving areas support free manual practice.
+    pub free_roam: bool,
+    elevation_metres: Vec<f32>,
+    left_width: Vec<f64>,
+    right_width: Vec<f64>,
+    road_mesh: Option<Arc<crate::road_mesh::RoadMesh>>,
+    road_render: Option<Arc<OnceLock<crate::RoadRenderGeometry>>>,
+    visual_source: Option<&'static [u8]>,
+    visual_cache: Arc<OnceLock<Result<crate::SourceVisual, String>>>,
+    practice_ground: Arc<Vec<[Vec2; 3]>>,
     pub circuit: Option<crate::Circuit>,
     pub centerline: Vec<Vec2>,
     /// Outer and inner wall polylines, indexed like the centerline.
@@ -84,6 +96,15 @@ pub struct Track {
     /// cloned by reference because every car carries a track.
     speed_profile: Arc<Vec<f64>>,
     profile_spacing: f64,
+}
+
+pub(crate) struct RecoveredStation {
+    pub arc: f64,
+    pub point: Vec2,
+    pub height: f32,
+    pub left: f64,
+    pub right: f64,
+    pub edges: Option<[Vec2; 2]>,
 }
 
 /// A broad phase only: exact segment intersection/projection still decides
@@ -197,6 +218,270 @@ impl CornerTable {
 }
 
 impl Track {
+    pub(crate) fn from_recovered(
+        circuit: crate::Circuit,
+        closed: bool,
+        stations: Vec<RecoveredStation>,
+        length: f64,
+        mesh: crate::road_mesh::RoadMesh,
+    ) -> Result<Self, String> {
+        let minimum = if closed { 3 } else { 2 };
+        if stations.len() < minimum || !length.is_finite() || length <= 0.0 {
+            return Err("GT4 course needs a finite route and at least three stations".into());
+        }
+        let n = stations.len();
+        let segments = if closed { n } else { n - 1 };
+        let centerline: Vec<_> = stations.iter().map(|s| s.point).collect();
+        let left_width: Vec<_> = stations.iter().map(|s| s.left).collect();
+        let right_width: Vec<_> = stations.iter().map(|s| s.right).collect();
+        let half_width: Vec<_> = left_width
+            .iter()
+            .zip(&right_width)
+            .map(|(l, r)| (l + r) * 0.5)
+            .collect();
+        if stations.iter().any(|s| {
+            ![
+                s.arc,
+                s.point.x,
+                s.point.y,
+                s.left,
+                s.right,
+                f64::from(s.height),
+            ]
+            .iter()
+            .all(|v| v.is_finite())
+                || s.left <= 0.0
+                || s.right <= 0.0
+                || s.edges
+                    .is_some_and(|edges| edges.iter().any(|p| !p.x.is_finite() || !p.y.is_finite()))
+        }) {
+            return Err("GT4 route contains unknown or invalid road boundaries".into());
+        }
+        let mut center_vec = Vec::with_capacity(segments);
+        let mut center_len = Vec::with_capacity(segments);
+        let mut center_len_sq = Vec::with_capacity(segments);
+        let mut center_tangent = Vec::with_capacity(segments);
+        let mut center_cum = Vec::with_capacity(segments);
+        for i in 0..segments {
+            let next = (i + 1) % n;
+            let delta = centerline[next] - centerline[i];
+            let distance = delta.norm();
+            let arc = if next == 0 {
+                length - stations[i].arc
+            } else {
+                stations[next].arc - stations[i].arc
+            };
+            if distance < 1e-6 || arc <= 0.0 {
+                return Err(format!("invalid GT4 route segment {i}"));
+            }
+            center_vec.push(delta);
+            center_len.push(arc);
+            center_len_sq.push(distance * distance);
+            center_tangent.push(delta * (1.0 / distance));
+            center_cum.push(stations[i].arc);
+        }
+        let mut outer = Vec::with_capacity(n);
+        let mut inner = Vec::with_capacity(n);
+        for i in 0..n {
+            if let Some(edges) = stations[i].edges {
+                outer.push(edges[0]);
+                inner.push(edges[1]);
+                continue;
+            }
+            let t = center_tangent[i.min(segments - 1)];
+            let normal = Vec2 { x: -t.y, y: t.x };
+            outer.push(centerline[i] + normal * left_width[i]);
+            inner.push(centerline[i] - normal * right_width[i]);
+        }
+        let mut bounds = bounds_of([&centerline, &outer, &inner]);
+        let mut seg_a = Vec::with_capacity(segments * 2);
+        let mut seg_vec = Vec::with_capacity(segments * 2);
+        for line in [&outer, &inner] {
+            for i in 0..segments {
+                seg_a.push(line[i]);
+                seg_vec.push(line[(i + 1) % n] - line[i]);
+            }
+        }
+        let wall_grid = Arc::new(SegmentGrid::new(&seg_a, &seg_vec));
+        let center_grid = Arc::new(SegmentGrid::new(&centerline, &center_vec));
+        let start = centerline[0];
+        let start_heading = center_tangent[0].angle();
+        let free_roam = match circuit {
+            crate::Circuit::Gt4(index) => {
+                crate::course_catalog::courses()[usize::from(index)].topology
+                    == crate::course_catalog::CourseTopology::Area
+            }
+            _ => false,
+        };
+        let practice_ground: Vec<_> = if free_roam {
+            mesh.upward_triangles()
+                .map(|face| {
+                    face.map(|p| Vec2 {
+                        x: f64::from(p[0]) * crate::UNITS_PER_METRE,
+                        y: f64::from(p[1]) * crate::UNITS_PER_METRE,
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        if !practice_ground.is_empty() {
+            let points: Vec<_> = practice_ground.iter().flatten().copied().collect();
+            bounds = bounds_of([&points]);
+        }
+        let elevation_metres: Vec<_> = stations.iter().map(|s| s.height).collect();
+        let road_render = if free_roam {
+            None
+        } else {
+            Some(Arc::new(OnceLock::new()))
+        };
+        let mut track = Self {
+            closed,
+            free_roam,
+            elevation_metres,
+            left_width,
+            right_width,
+            road_mesh: Some(Arc::new(mesh)),
+            road_render,
+            visual_source: None,
+            visual_cache: Arc::new(OnceLock::new()),
+            practice_ground: Arc::new(practice_ground),
+            circuit: Some(circuit),
+            centerline,
+            outer,
+            inner,
+            lap_length: length,
+            half_width,
+            start,
+            start_heading,
+            bounds,
+            center_vec,
+            center_len,
+            center_len_sq,
+            center_tangent,
+            center_cum,
+            seg_a,
+            seg_vec,
+            gates: Vec::new(),
+            wall_grid,
+            center_grid,
+            corner_table: Arc::new(CornerTable::default()),
+            speed_profile: Arc::new(Vec::new()),
+            profile_spacing: 1.0,
+        };
+        track.gates = if track.free_roam {
+            Vec::new()
+        } else {
+            track.make_gates()
+        };
+        track.corner_table = Arc::new(CornerTable::build(&track));
+        track.build_speed_profile();
+        Ok(track)
+    }
+
+    fn bound_arc(&self, arc: f64) -> f64 {
+        if self.closed {
+            py_mod(arc, self.lap_length)
+        } else {
+            arc.clamp(0.0, self.lap_length)
+        }
+    }
+    fn next_point(&self, index: usize) -> usize {
+        if self.closed {
+            (index + 1) % self.centerline.len()
+        } else {
+            (index + 1).min(self.centerline.len() - 1)
+        }
+    }
+    pub fn arc_height_metres(&self, arc: f64) -> f32 {
+        let arc = self.bound_arc(arc);
+        let i = segment_index(&self.center_cum, arc);
+        let t = ((arc - self.center_cum[i]) / self.center_len[i]).clamp(0.0, 1.0) as f32;
+        self.elevation_metres[i]
+            + (self.elevation_metres[self.next_point(i)] - self.elevation_metres[i]) * t
+    }
+    pub fn course_condition(&self) -> crate::course_catalog::CourseCondition {
+        match self.circuit {
+            Some(crate::Circuit::Gt4(index)) => {
+                crate::course_catalog::courses()[usize::from(index)].condition
+            }
+            _ => crate::course_catalog::CourseCondition::Dry,
+        }
+    }
+
+    pub fn start_height_metres(&self) -> f32 {
+        self.elevation_metres[0]
+    }
+    /// Original upward-facing ground for manual areas, in common world units.
+    /// The derived navigation guide does not delimit the physical practice area.
+    pub fn practice_ground_triangles(&self) -> &[[Vec2; 3]] {
+        self.practice_ground.as_slice()
+    }
+    pub fn road_render_geometry(&self) -> Option<&crate::RoadRenderGeometry> {
+        self.road_render.as_ref().map(|cache| {
+            cache.get_or_init(|| {
+                crate::RoadRenderGeometry::build(
+                    self.road_mesh
+                        .as_ref()
+                        .expect("source render has road mesh"),
+                    &self.outer,
+                    &self.inner,
+                    &self.elevation_metres,
+                    self.closed,
+                )
+            })
+        })
+    }
+    pub(crate) fn attach_source_visual(&mut self, bytes: &'static [u8]) {
+        self.visual_source = Some(bytes);
+        self.visual_cache = Arc::new(OnceLock::new());
+    }
+    /// Decode display assets only on demand, leaving headless training independent
+    /// of texture upload and display-geometry construction.
+    pub fn source_visual(&self) -> Result<Option<&crate::SourceVisual>, String> {
+        let Some(bytes) = self.visual_source else {
+            return Ok(None);
+        };
+        self.visual_cache
+            .get_or_init(|| crate::SourceVisual::decode_gzip(bytes))
+            .as_ref()
+            .map(Some)
+            .map_err(Clone::clone)
+    }
+    pub fn road_contact(&self, x: f32, y: f32, z: f32) -> Option<crate::RoadContact> {
+        self.road_mesh.as_ref().map_or_else(
+            || Some(crate::RoadContact::flat()),
+            |mesh| mesh.contact(x, y, z),
+        )
+    }
+    /// Height separates stacked road decks without changing planar map scale.
+    pub fn nearest_on_centerline_at_height(
+        &self,
+        point: Vec2,
+        height_metres: f32,
+    ) -> CenterlineHit {
+        if self.road_mesh.is_none() {
+            return self.nearest_on_centerline(point);
+        }
+        let mut indices = self.center_grid.near(point);
+        if indices.is_empty() {
+            indices.extend(0..self.center_vec.len());
+        }
+        let mut best = None;
+        let mut best_distance = f64::INFINITY;
+        for index in indices {
+            let (hit, planar) = self.nearest_in(point, std::iter::once(index)).unwrap();
+            let height =
+                f64::from(self.arc_height_metres(hit.arc) - height_metres) * crate::UNITS_PER_METRE;
+            let distance = planar + height * height;
+            if distance < best_distance {
+                best_distance = distance;
+                best = Some(hit);
+            }
+        }
+        best.unwrap()
+    }
+
     /// One lap of seeded random geometry. The same seed always rebuilds the
     /// same track; the generator retries until the loop is drivable.
     pub fn random(seed: u64) -> Self {
@@ -423,6 +708,16 @@ impl Track {
         let start = centerline[0];
         let start_heading = center_tangent[0].angle();
         let mut track = Self {
+            closed: true,
+            free_roam: false,
+            elevation_metres: vec![0.0; centerline.len()],
+            left_width: half_width.clone(),
+            right_width: half_width.clone(),
+            road_mesh: None,
+            road_render: None,
+            visual_source: None,
+            visual_cache: Arc::new(OnceLock::new()),
+            practice_ground: Arc::new(Vec::new()),
             circuit,
             centerline,
             outer,
@@ -446,7 +741,11 @@ impl Track {
             speed_profile: Arc::new(Vec::new()),
             profile_spacing: 1.0,
         };
-        track.gates = track.make_gates();
+        track.gates = if track.free_roam {
+            Vec::new()
+        } else {
+            track.make_gates()
+        };
         track.corner_table = Arc::new(CornerTable::build(&track));
         track.build_speed_profile();
         Some(track)
@@ -472,6 +771,9 @@ impl Track {
         }
         for _ in 0..2 {
             for index in (0..count).rev() {
+                if !self.closed && index + 1 == count {
+                    continue;
+                }
                 let next = profile[(index + 1) % count];
                 let allowed = (next * next + 2.0 * brake * spacing).sqrt();
                 profile[index] = profile[index].min(allowed).max(floor);
@@ -488,7 +790,7 @@ impl Track {
         if profile.is_empty() {
             return crate::MAX_SPEED;
         }
-        let index = (py_mod(arc, self.lap_length) / self.profile_spacing) as usize;
+        let index = (self.bound_arc(arc) / self.profile_spacing) as usize;
         profile[index.min(profile.len() - 1)]
     }
 
@@ -508,7 +810,7 @@ impl Track {
 
     /// Point on the centerline at the given arc length.
     pub fn arc_point(&self, arc: f64) -> Vec2 {
-        let arc = py_mod(arc, self.lap_length);
+        let arc = self.bound_arc(arc);
         let segment = segment_index(&self.center_cum, arc);
         let fraction = (arc - self.center_cum[segment]) / self.center_len[segment];
         self.centerline[segment] + self.center_vec[segment] * fraction
@@ -516,23 +818,57 @@ impl Track {
 
     /// Half the road width at an arc length.
     pub fn arc_half_width(&self, arc: f64) -> f64 {
-        let arc = py_mod(arc, self.lap_length);
+        let arc = self.bound_arc(arc);
         let segment = segment_index(&self.center_cum, arc);
         let fraction = (arc - self.center_cum[segment]) / self.center_len[segment];
         let width = self.half_width[segment];
-        let next = self.half_width[(segment + 1) % self.half_width.len()];
+        let next = self.half_width[self.next_point(segment)];
         width + (next - width) * fraction
+    }
+
+    /// Distances to the two road edges from the route guide. Recovered guides
+    /// need not lie in the middle of the physical road.
+    pub fn arc_road_widths(&self, arc: f64) -> (f64, f64) {
+        if self.road_mesh.is_none() {
+            let width = self.arc_half_width(arc);
+            return (width, width);
+        }
+        let arc = self.bound_arc(arc);
+        let segment = segment_index(&self.center_cum, arc);
+        let fraction = (arc - self.center_cum[segment]) / self.center_len[segment];
+        let next = self.next_point(segment);
+        let interpolate =
+            |widths: &[f64]| widths[segment] + (widths[next] - widths[segment]) * fraction;
+        (
+            interpolate(&self.left_width),
+            interpolate(&self.right_width),
+        )
+    }
+
+    pub fn arc_full_width(&self, arc: f64) -> f64 {
+        let (left, right) = self.arc_road_widths(arc);
+        left + right
     }
 
     /// Tightest corner radius over the next `horizon` units of road, or
     /// infinity when the road stays straight that far ahead.
     pub fn tightest_corner_ahead(&self, arc: f64, horizon: f64) -> f64 {
-        self.corner_table.ahead(arc, horizon, self.lap_length)
+        if self.closed {
+            self.corner_table.ahead(arc, horizon, self.lap_length)
+        } else {
+            let start = (self.bound_arc(arc) / self.corner_table.spacing).floor() as usize;
+            let end =
+                (self.bound_arc(arc + horizon) / self.corner_table.spacing).ceil() as usize + 1;
+            self.corner_table.range(
+                start.min(self.corner_table.levels[0].len()),
+                end.min(self.corner_table.levels[0].len()),
+            )
+        }
     }
 
     /// Tangent (unit vector in the driving direction) at an arc length.
     pub fn arc_tangent(&self, arc: f64) -> Vec2 {
-        self.center_tangent[segment_index(&self.center_cum, py_mod(arc, self.lap_length))]
+        self.center_tangent[segment_index(&self.center_cum, self.bound_arc(arc))]
     }
 
     pub fn nearest_on_centerline(&self, point: Vec2) -> CenterlineHit {
@@ -546,7 +882,7 @@ impl Track {
                 return hit;
             }
         }
-        self.nearest_in(point, 0..self.centerline.len()).unwrap().0
+        self.nearest_in(point, 0..self.center_vec.len()).unwrap().0
     }
 
     fn nearest_in(
@@ -578,15 +914,23 @@ impl Track {
             }
         }
         let tangent = self.center_tangent[best_index];
-        let width_here = self.half_width[best_index];
-        let width_next = self.half_width[(best_index + 1) % self.half_width.len()];
+        let lateral = best_dx * -tangent.y + best_dy * tangent.x;
+        let widths = if self.road_mesh.is_none() {
+            &self.half_width
+        } else if lateral >= 0.0 {
+            &self.left_width
+        } else {
+            &self.right_width
+        };
+        let width_here = widths[best_index];
+        let width_next = widths[self.next_point(best_index)];
         if !best_dist.is_finite() {
             return None;
         }
         Some((
             CenterlineHit {
                 segment: best_index,
-                lateral: best_dx * -tangent.y + best_dy * tangent.x,
+                lateral,
                 arc: self.center_cum[best_index] + best_t * self.center_len[best_index],
                 half_width: width_here + (width_next - width_here) * best_t,
                 tangent,
@@ -626,6 +970,38 @@ impl Track {
         self.cast_candidates(origin, angles, out, &candidates);
     }
 
+    pub fn cast_rays_into_at_height(
+        &self,
+        origin: Vec2,
+        height_metres: f32,
+        arc: f64,
+        angles: &[f64],
+        out: &mut [f64],
+    ) {
+        if self.road_mesh.is_none() {
+            self.cast_rays_into(origin, angles, out);
+            return;
+        }
+        let candidates: Vec<_> = self
+            .wall_grid
+            .near(origin)
+            .into_iter()
+            .filter(|segment| {
+                let i = *segment % self.center_vec.len();
+                let height =
+                    (self.elevation_metres[i] + self.elevation_metres[self.next_point(i)]) * 0.5;
+                let difference = (self.center_cum[i] - arc).abs();
+                let along = if self.closed {
+                    difference.min(self.lap_length - difference)
+                } else {
+                    difference
+                };
+                along < 2.0 * RAY_RANGE || (height - height_metres).abs() < 2.0
+            })
+            .collect();
+        self.cast_candidates(origin, angles, out, &candidates);
+    }
+
     fn cast_candidates(&self, origin: Vec2, angles: &[f64], out: &mut [f64], candidates: &[usize]) {
         out.fill(RAY_RANGE);
         for (ray, angle) in angles.iter().enumerate() {
@@ -652,10 +1028,7 @@ impl Track {
     fn make_gates(&self) -> Vec<Gate> {
         let mut gates = Vec::with_capacity(CHECKPOINT_COUNT);
         for index in 1..=CHECKPOINT_COUNT {
-            let arc = py_mod(
-                index as f64 * self.lap_length / CHECKPOINT_COUNT as f64,
-                self.lap_length,
-            );
+            let arc = self.bound_arc(index as f64 * self.lap_length / CHECKPOINT_COUNT as f64);
             let segment = segment_index(&self.center_cum, arc);
             let fraction = (arc - self.center_cum[segment]) / self.center_len[segment];
             gates.push(Gate {
@@ -852,6 +1225,56 @@ fn segment_index(cum: &[f64], arc: f64) -> usize {
 #[cfg(test)]
 mod spatial_tests {
     use super::*;
+    #[test]
+    fn recovered_source_edges_are_not_rotated_into_a_different_normal_frame() {
+        let mut bytes = Vec::new();
+        bytes.extend(3u32.to_le_bytes());
+        bytes.extend(1u32.to_le_bytes());
+        for p in [[0.0f32, 0.0, 0.0], [30.0, 0.0, 0.0], [0.0, 0.0, -30.0]] {
+            for f in p {
+                bytes.extend(f.to_le_bytes());
+            }
+            bytes.extend([0, 0, 255, 127]);
+        }
+        for i in [0u16, 1, 2] {
+            bytes.extend(i.to_le_bytes());
+        }
+        bytes.extend([0, 0, 0, 0, 0, 0]);
+        let points: Vec<_> = (0..3)
+            .map(|i| Vec2 {
+                x: i as f64 * 10.0,
+                y: 0.0,
+            })
+            .collect();
+        let edges: Vec<_> = points
+            .iter()
+            .map(|p| [*p + Vec2 { x: -1.0, y: 6.0 }, *p + Vec2 { x: 1.0, y: -4.0 }])
+            .collect();
+        let stations = points
+            .iter()
+            .enumerate()
+            .map(|(i, p)| RecoveredStation {
+                arc: i as f64 * 10.0,
+                point: *p,
+                height: 0.0,
+                left: (edges[i][0] - *p).norm(),
+                right: (edges[i][1] - *p).norm(),
+                edges: Some(edges[i]),
+            })
+            .collect();
+        let track = Track::from_recovered(
+            crate::Circuit::Monza,
+            false,
+            stations,
+            20.0,
+            crate::road_mesh::RoadMesh::decode(&bytes).unwrap(),
+        )
+        .unwrap();
+        for (i, edge) in edges.iter().enumerate() {
+            assert_eq!(track.outer[i], edge[0]);
+            assert_eq!(track.inner[i], edge[1]);
+        }
+    }
     #[test]
     fn accelerated_queries_match_exhaustive_geometry() {
         let mut tracks: Vec<_> = crate::Circuit::ALL.into_iter().map(|c| c.build()).collect();

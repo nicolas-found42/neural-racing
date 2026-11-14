@@ -12,6 +12,14 @@ they are reference material, not runtime game textures.
 
 ## Scale decisions
 
+The table below records the original M4 reference stage. The current vehicle is
+the recovered M3 GTR Race Car ’01: body 4.619 × 1.879 m, wheelbase 2.731 m.
+Its existing top-down sprite uses the saved orthographic camera calibration,
+including mirrors and its original pivot; see [M3 visual scale](gt4/car-visual-scale.md).
+The world conversion remains 28 / 2.917 units per metre. Changing the car model
+does not rescale any circuit. Current body/road width ratios for the three nominal
+roads are 15.66%, 12.53% and 15.03%, respectively.
+
 | Reference | Published dimensions | Implementation |
 | --- | --- | --- |
 | [BMW M4 GT3 EVO](https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html) | 5.020 m long, 2.040 m wide, 2.917 m wheelbase | One world scale, 28 / 2.917 units per metre; body, tires and wing share it |

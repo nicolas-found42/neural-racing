@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-04",
+  "source_hashes": {
+    "crates/neural_racing_core/src/gt4/runtime.rs": "7bc92f50e8f692fb2334cbd2e2329ae8dc5f810a2539a4ca10cb2de89bb236e6",
+    "crates/neural_racing_core/src/gt4/parameters.rs": "d737ae10b425a7125e76c04390fd6472feaeba7c0772c099c82cfb40d19d01d9",
+    "crates/neural_racing_core/src/gt4/aids.rs": "d8e9e3e120bcb02c52f19d52735d7788f24152b8167058fc293eead7b8dddf39",
+    "crates/neural_racing_core/src/vehicle.rs": "1b35a10f5d526dc92c5e3803924ac5214b6e7171dde25aa4141f871ee744d50f",
+    "scripts/gt4/run_native_progress.py": "55065ee0766ace145cdfc6183a9bc6da6c9680149f03ca9dacb27fb34cb3aa5a",
+    "scripts/gt4/native_oracle/native_ee_runner.cpp": "fc1cf4ac9c7584d2413590efd48697bf4ec9eba6727b118665bf29e2c4de08b7",
+    "scripts/gt4/native_oracle/CMakeLists.txt": "19da6ad0d0fd087470647f9bdd2dfe2a510c0f5d91e53fdb23341be083b70598"
+  },
+  "proofs": {
+    "course-condition/comparison.json": {
+      "sha256": "b38c318d789ca140b43f867ce05767d903d1c623c890a5a841b66c73f78181df",
+      "authority": "unchanged original35f808 plus original3f1700/3f1748 as applicable, then ORIGINAL363e14..363efc block including361908 andSnowtemporarytireoverride/restoration",
+      "cases": 4,
+      "failed_count": null,
+      "maximum_ulp": null
+    },
+    "course-condition/aids-comparison.json": {
+      "sha256": "70f01f3ef266f0261e2a4c5683bc5b7ac1b9daf94b9ff96a1d1a7d647766ebb8",
+      "authority": "original3f9870 executed on upstreamPlayEE against originalcourse-initializedM3 snapshots",
+      "cases": 124,
+      "failed_count": 0,
+      "maximum_ulp": 9
+    },
+    "query-positions-comparison.json": {
+      "sha256": "628fa4470e579b85d503c2cc743605097d7a6887b04d929cc387e7a3fa6b9661",
+      "authority": "unchanged original3697a8\u21923696c8/369760 on upstreamPlayEE",
+      "cases": 24,
+      "failed_count": 0,
+      "maximum_ulp": null
+    },
+    "partial-contact-comparison.json": {
+      "sha256": "324450f54980ec42f9bd1367a555edca522dee3cca88943eb1815b3681853f3c",
+      "authority": "unchanged original369888 numeric prefix and original369640 callees on upstream Play EE",
+      "cases": 21,
+      "failed_count": 0,
+      "maximum_ulp": 0
+    },
+    "native-v/runtime-stations-frozen-comparison.json": {
+      "sha256": "91097aa53893e437e63239d8c008f66c24a32907bff38b2ee911849a28765011",
+      "authority": null,
+      "cases": 0,
+      "failed_count": null,
+      "maximum_ulp": null
+    },
+    "native-v/final-two-stations-results.json": {
+      "sha256": "2723573bab446ca2d7876029f9233f06447a07bac063180260f5ebd2d3897471",
+      "authority": "unchanged original3e5818\u2192395760\u21923e6858 on upstream Play EE; actualBSP search/traverse/checkHit andclusterlimitedquadprojection; no host geometry callbacks",
+      "cases": 2063,
+      "failed_count": null,
+      "maximum_ulp": null
+    }
+  },
+  "checks": {
+    "cargo_test_gt4_lib": {
+      "passed": 21,
+      "failed": 0,
+      "log": "course-condition/cargo-gt4-final.log"
+    },
+    "cargo_test_vehicle_lib": {
+      "passed": 3,
+      "failed": 0,
+      "log": "course-condition/cargo-vehicle-final.log"
+    },
+    "rustfmt_check": "pass",
+    "git_diff_check": "pass",
+    "portable_cli_ruff": "pass",
+    "fresh_public_runner_build": "pass;387CMake/Ninjatargets",
+    "new_runner_vs_previous_original2cases": "exactVbits,hint,hitheight,contactflags"
+  },
+  "limitations": [
+    "Fullworkspace/drivingassessmentownedandrecordedbyparent.",
+    "Sourceheightquery/progressoriginalcodeproofdoesnotguaranteeroutechoiceforalldeckcandidates.",
+    "All-four-wheel external querylossisanexplicitadapterterminationboundary;partialmissesretainoriginalcacheddata.",
+    "Coursecondition snapshotscovertheselectedM3anddeclaredzeroruntimecfg,notothercarsorallrace-entry/AIconfigurations."
+  ]
+}

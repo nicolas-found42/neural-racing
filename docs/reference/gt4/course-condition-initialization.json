@@ -1,0 +1,160 @@
+{
+  "authority": "unchanged original35f808 plus original3f1700/3f1748 as applicable, then ORIGINAL363e14..363efc block including361908 andSnowtemporarytireoverride/restoration",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+  "input_sha256": "d0f4f60b7f778da1e767603504337e1bcc08222984f0bc27d57fba5b371fbe5e",
+  "expanded_source_sha256": "cf842a38d73103304e2da2b9316e099adf0ea85ab6411e7118189b3bcae88bdf",
+  "globals_source_sha256": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a",
+  "cases": [
+    {
+      "course_type": 0,
+      "name": "dry",
+      "trampoline_words": [
+        "3c0401c0",
+        "34840000",
+        "0c0d7e02",
+        "00000000",
+        "3c0301d0",
+        "34631000",
+        "3c0401c0",
+        "34840000",
+        "080d8f85",
+        "00000000"
+      ],
+      "car-data_sha256": "572905793b61abb6a71810c4bc2e021520796d1686418fe25645befe1cac278e",
+      "globals_sha256": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a",
+      "expanded-restored_sha256": "cf842a38d73103304e2da2b9316e099adf0ea85ab6411e7118189b3bcae88bdf",
+      "different_data_offsets": [],
+      "different_global_offsets": [],
+      "different_expanded_offsets": []
+    },
+    {
+      "course_type": 1,
+      "name": "wet",
+      "trampoline_words": [
+        "3c0401c0",
+        "34840000",
+        "0c0d7e02",
+        "00000000",
+        "3c0301d0",
+        "34631000",
+        "3c0401c0",
+        "34840000",
+        "080d8f85",
+        "00000000"
+      ],
+      "car-data_sha256": "572905793b61abb6a71810c4bc2e021520796d1686418fe25645befe1cac278e",
+      "globals_sha256": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a",
+      "expanded-restored_sha256": "cf842a38d73103304e2da2b9316e099adf0ea85ab6411e7118189b3bcae88bdf",
+      "different_data_offsets": [],
+      "different_global_offsets": [],
+      "different_expanded_offsets": []
+    },
+    {
+      "course_type": 2,
+      "name": "dirt",
+      "trampoline_words": [
+        "3c0401c0",
+        "34840000",
+        "0c0d7e02",
+        "00000000",
+        "3c0401d0",
+        "34841000",
+        "0c0fc5c0",
+        "00000000",
+        "3c0401d0",
+        "34841000",
+        "0c0fc5d2",
+        "00000000",
+        "3c0301d0",
+        "34631000",
+        "3c0401c0",
+        "34840000",
+        "080d8f85",
+        "00000000"
+      ],
+      "car-data_sha256": "d4718836565b508883022d1d949a9d1cf68f88c48d105b192cb289b7041e7086",
+      "globals_sha256": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a",
+      "expanded-restored_sha256": "cfb5809410ea5df3269984d8533d38b8f81d1f82878a061cd326b73f2d142f6d",
+      "different_data_offsets": [
+        "0x10a4",
+        "0x10a5",
+        "0x10a6",
+        "0x10b4",
+        "0x10b6",
+        "0x10b8",
+        "0x10b9",
+        "0x10ba",
+        "0x10bb",
+        "0x10c8",
+        "0x10c9",
+        "0x10ca",
+        "0x10cb"
+      ],
+      "different_global_offsets": [],
+      "different_expanded_offsets": [
+        "0x1b8",
+        "0x1c2"
+      ]
+    },
+    {
+      "course_type": 3,
+      "name": "snow",
+      "trampoline_words": [
+        "3c0401c0",
+        "34840000",
+        "0c0d7e02",
+        "00000000",
+        "3c0401d0",
+        "34841000",
+        "0c0fc5c0",
+        "00000000",
+        "3c0401d0",
+        "34841000",
+        "0c0fc5d2",
+        "00000000",
+        "3c0301d0",
+        "34631000",
+        "3c0401c0",
+        "34840000",
+        "080d8f85",
+        "00000000"
+      ],
+      "car-data_sha256": "d4718836565b508883022d1d949a9d1cf68f88c48d105b192cb289b7041e7086",
+      "globals_sha256": "7c1510743c478626de8fdf40c229aa125596d96f1a67ffcaa4085b7fa72b4115",
+      "expanded-restored_sha256": "cfb5809410ea5df3269984d8533d38b8f81d1f82878a061cd326b73f2d142f6d",
+      "different_data_offsets": [
+        "0x10a4",
+        "0x10a5",
+        "0x10a6",
+        "0x10b4",
+        "0x10b6",
+        "0x10b8",
+        "0x10b9",
+        "0x10ba",
+        "0x10bb",
+        "0x10c8",
+        "0x10c9",
+        "0x10ca",
+        "0x10cb"
+      ],
+      "different_global_offsets": [
+        "0x6209f8",
+        "0x6209f9",
+        "0x6209fa"
+      ],
+      "different_expanded_offsets": [
+        "0x1b8",
+        "0x1c2"
+      ]
+    }
+  ],
+  "limitations": [
+    "SelectedactualstockM3 expanded input and explicitzero runtime config inheritedfromvalidatedsnapshot.",
+    "Bounded originalconstructorblock; wider race-entry and AI/equipment-selection context is not executed."
+  ],
+  "assets": {
+    "m3_gtr_alms_01_offroad.bin": "d4718836565b508883022d1d949a9d1cf68f88c48d105b192cb289b7041e7086",
+    "global_parameters_snow.bin": "7c1510743c478626de8fdf40c229aa125596d96f1a67ffcaa4085b7fa72b4115"
+  }
+}

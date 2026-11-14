@@ -2010,6 +2010,7 @@ dependencies = [
 name = "neural_racing_core"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "neural_racing_diagnostics",
  "serde",
  "serde_json",

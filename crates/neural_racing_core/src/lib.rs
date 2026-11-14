@@ -1,8 +1,28 @@
 //! Real circuits, seeded procedural training courses, and four-contact-patch vehicle dynamics.
 
 mod circuit;
+pub mod course_catalog;
 mod env;
+pub mod gt4;
+pub(crate) mod gt4_course;
 pub mod rng;
+mod road_boundary;
+mod road_geometry;
+pub use road_geometry::{
+    RoadRenderBoundary, RoadRenderGeometry, RoadRenderItem, RoadRenderTriangle, RoadRenderVertex,
+};
+mod road_mesh;
+mod source_raster;
+mod source_visual;
+mod visual_sampler;
+pub use road_mesh::RoadContact;
+pub use source_raster::{GroundTileGrid, SourceGroundRasterizer, TILE_PIXELS};
+pub use source_visual::{
+    SourceVisual, SourceVisualTexture, SourceVisualTriangle, SourceVisualVertex,
+};
+pub use visual_sampler::{
+    PreparedSourceVisual, PreparedVisualTexture, PreparedVisualTriangle, PreparedVisualVertex,
+};
 mod track;
 pub mod vehicle;
 
@@ -12,12 +32,12 @@ pub use rng::Rng;
 pub use track::{Bounds, Gate, Track};
 
 pub const MAX_SPEED: f64 = 80.0 * UNITS_PER_METRE;
-pub const WHEELBASE: f64 = 28.0;
-pub const MAX_STEER_ANGLE: f64 = 0.55;
+pub const WHEELBASE: f64 = 2.731 * UNITS_PER_METRE;
+pub const MAX_STEER_ANGLE: f64 = 40.0 * std::f64::consts::PI / 180.0;
 pub const MAX_LATERAL_ACCEL: f64 = vehicle::GRIP * vehicle::GRAVITY * UNITS_PER_METRE;
 
-pub const PHYSICS_DT: f64 = 1.0 / 120.0;
-pub const SUBSTEPS: usize = 6;
+pub const PHYSICS_DT: f64 = 1.0 / 60.0;
+pub const SUBSTEPS: usize = 3;
 pub const DECISION_DT: f64 = PHYSICS_DT * SUBSTEPS as f64;
 
 /// Decision budget for a default two-lap race.
@@ -27,7 +47,7 @@ pub const DEFAULT_LAPS: i32 = 2;
 /// the lap; this is the mean the variation is built around.
 pub const BASE_HALF_WIDTH: f64 = 30.0;
 pub const CHECKPOINT_COUNT: usize = 8;
-pub const NUM_RAYS: usize = 11;
+pub const NUM_RAYS: usize = 44;
 pub const RAY_RANGE: f64 = 70.0 * UNITS_PER_METRE;
 
 pub const ARENA_WIDTH: f64 = 960.0;

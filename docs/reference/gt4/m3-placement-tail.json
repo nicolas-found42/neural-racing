@@ -1,0 +1,134 @@
+{
+  "authority": "original-opcode Play EE execution",
+  "scope": "placement-tail pure numeric block only; no road-query or fullplacement claim",
+  "entry": "0x3632e8",
+  "stop_before": "0x363408",
+  "returncode": 0,
+  "stdout": "0 00363408 00000000 3f4d2f19 2000 00000000 bd0efa33 bf4dd2f0 453637fd 453637fd bcce512c 00000000 bd0efa33 3f4dd2f0 453637fd 453637fd bcce512c 00000000 bc8efa33 bf4d2f19 453637ff 453637ff bcce512e 00000000 bc8efa33 3f4d2f19 453637ff 453637ff bcce512e\n",
+  "stderr": "",
+  "input_car_data_sha256": "eb27a4d38a77ddd5e98f6f54835531d240a6aaa0652181052fe1f538001cdd78",
+  "globals_sha256": "f756ab9f7dc210bb4214a7d61eea2208eb6a04d12fd0a1ca4f58724f2c3d81e4",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "gprs": {
+    "18": 30433540,
+    "19": 30416896,
+    "20": 30433280,
+    "22": 6423672
+  },
+  "controlled_inputs": "otherwisezero car and mode845bf0=0",
+  "wheels": [
+    {
+      "0x0": {
+        "bits": "00000000",
+        "value": 0.0
+      },
+      "0x4": {
+        "bits": "bd0efa33",
+        "value": -0.034906577318906784
+      },
+      "0x8": {
+        "bits": "bf4dd2f0",
+        "value": -0.8039999008178711
+      },
+      "0x48": {
+        "bits": "453637fd",
+        "value": 2915.499267578125
+      },
+      "0x4c": {
+        "bits": "453637fd",
+        "value": 2915.499267578125
+      },
+      "0x94": {
+        "bits": "bcce512c",
+        "value": -0.02518519014120102
+      }
+    },
+    {
+      "0x0": {
+        "bits": "00000000",
+        "value": 0.0
+      },
+      "0x4": {
+        "bits": "bd0efa33",
+        "value": -0.034906577318906784
+      },
+      "0x8": {
+        "bits": "3f4dd2f0",
+        "value": 0.8039999008178711
+      },
+      "0x48": {
+        "bits": "453637fd",
+        "value": 2915.499267578125
+      },
+      "0x4c": {
+        "bits": "453637fd",
+        "value": 2915.499267578125
+      },
+      "0x94": {
+        "bits": "bcce512c",
+        "value": -0.02518519014120102
+      }
+    },
+    {
+      "0x0": {
+        "bits": "00000000",
+        "value": 0.0
+      },
+      "0x4": {
+        "bits": "bc8efa33",
+        "value": -0.017453288659453392
+      },
+      "0x8": {
+        "bits": "bf4d2f19",
+        "value": -0.8014999032020569
+      },
+      "0x48": {
+        "bits": "453637ff",
+        "value": 2915.499755859375
+      },
+      "0x4c": {
+        "bits": "453637ff",
+        "value": 2915.499755859375
+      },
+      "0x94": {
+        "bits": "bcce512e",
+        "value": -0.025185193866491318
+      }
+    },
+    {
+      "0x0": {
+        "bits": "00000000",
+        "value": 0.0
+      },
+      "0x4": {
+        "bits": "bc8efa33",
+        "value": -0.017453288659453392
+      },
+      "0x8": {
+        "bits": "3f4d2f19",
+        "value": 0.8014999032020569
+      },
+      "0x48": {
+        "bits": "453637ff",
+        "value": 2915.499755859375
+      },
+      "0x4c": {
+        "bits": "453637ff",
+        "value": 2915.499755859375
+      },
+      "0x94": {
+        "bits": "bcce512e",
+        "value": -0.025185193866491318
+      }
+    }
+  ],
+  "emulator": {
+    "repository": "https://github.com/jpd002/Play-",
+    "commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+    "architecture": "native arm64 JIT",
+    "initial_gp_from_original_ELF_reginfo": "0x6dddf0",
+    "rounding": "FE_TOWARDZERO + FTZ; accurate ADD/SUB compile hints on all text blocks",
+    "binary_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53"
+  },
+  "source_block_assembly_sha256": "b97867d7de3e084c9949ed5039b5093677cd6d957cc58b0fe00b8c4cbe2e480e"
+}

@@ -1,0 +1,648 @@
+{
+  "authority": "unchanged original3f4e40 instructions on upstream Play EE",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+  "input_sha256": "a1ba684cfe9af33083e81be3f288d1acd3fa283e32dfd7736aa42f95ab750394",
+  "cases": [
+    {
+      "raw_material": 0,
+      "flags": 0,
+      "expected_material": 0
+    },
+    {
+      "raw_material": 1,
+      "flags": 0,
+      "expected_material": 1
+    },
+    {
+      "raw_material": 2,
+      "flags": 0,
+      "expected_material": 2
+    },
+    {
+      "raw_material": 3,
+      "flags": 0,
+      "expected_material": 3
+    },
+    {
+      "raw_material": 4,
+      "flags": 0,
+      "expected_material": 4
+    },
+    {
+      "raw_material": 5,
+      "flags": 0,
+      "expected_material": 5
+    },
+    {
+      "raw_material": 6,
+      "flags": 0,
+      "expected_material": 6
+    },
+    {
+      "raw_material": 7,
+      "flags": 0,
+      "expected_material": 7
+    },
+    {
+      "raw_material": 8,
+      "flags": 0,
+      "expected_material": 8
+    },
+    {
+      "raw_material": 9,
+      "flags": 0,
+      "expected_material": 9
+    },
+    {
+      "raw_material": 10,
+      "flags": 0,
+      "expected_material": 10
+    },
+    {
+      "raw_material": 11,
+      "flags": 0,
+      "expected_material": 11
+    },
+    {
+      "raw_material": 12,
+      "flags": 0,
+      "expected_material": 12
+    },
+    {
+      "raw_material": 13,
+      "flags": 0,
+      "expected_material": 13
+    },
+    {
+      "raw_material": 14,
+      "flags": 0,
+      "expected_material": 14
+    },
+    {
+      "raw_material": 15,
+      "flags": 0,
+      "expected_material": 15
+    },
+    {
+      "raw_material": 16,
+      "flags": 0,
+      "expected_material": 16
+    },
+    {
+      "raw_material": 17,
+      "flags": 0,
+      "expected_material": 17
+    },
+    {
+      "raw_material": 18,
+      "flags": 0,
+      "expected_material": 18
+    },
+    {
+      "raw_material": 19,
+      "flags": 0,
+      "expected_material": 19
+    },
+    {
+      "raw_material": 20,
+      "flags": 0,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 21,
+      "flags": 0,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 22,
+      "flags": 0,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 23,
+      "flags": 0,
+      "expected_material": 23
+    },
+    {
+      "raw_material": 24,
+      "flags": 0,
+      "expected_material": 24
+    },
+    {
+      "raw_material": 25,
+      "flags": 0,
+      "expected_material": 25
+    },
+    {
+      "raw_material": 26,
+      "flags": 0,
+      "expected_material": 26
+    },
+    {
+      "raw_material": 27,
+      "flags": 0,
+      "expected_material": 27
+    },
+    {
+      "raw_material": 28,
+      "flags": 0,
+      "expected_material": 28
+    },
+    {
+      "raw_material": 29,
+      "flags": 0,
+      "expected_material": 29
+    },
+    {
+      "raw_material": 30,
+      "flags": 0,
+      "expected_material": 30
+    },
+    {
+      "raw_material": 31,
+      "flags": 0,
+      "expected_material": 31
+    },
+    {
+      "raw_material": 0,
+      "flags": 1,
+      "expected_material": 0
+    },
+    {
+      "raw_material": 1,
+      "flags": 1,
+      "expected_material": 1
+    },
+    {
+      "raw_material": 2,
+      "flags": 1,
+      "expected_material": 2
+    },
+    {
+      "raw_material": 3,
+      "flags": 1,
+      "expected_material": 3
+    },
+    {
+      "raw_material": 4,
+      "flags": 1,
+      "expected_material": 4
+    },
+    {
+      "raw_material": 5,
+      "flags": 1,
+      "expected_material": 5
+    },
+    {
+      "raw_material": 6,
+      "flags": 1,
+      "expected_material": 6
+    },
+    {
+      "raw_material": 7,
+      "flags": 1,
+      "expected_material": 7
+    },
+    {
+      "raw_material": 8,
+      "flags": 1,
+      "expected_material": 8
+    },
+    {
+      "raw_material": 9,
+      "flags": 1,
+      "expected_material": 9
+    },
+    {
+      "raw_material": 10,
+      "flags": 1,
+      "expected_material": 10
+    },
+    {
+      "raw_material": 11,
+      "flags": 1,
+      "expected_material": 11
+    },
+    {
+      "raw_material": 12,
+      "flags": 1,
+      "expected_material": 12
+    },
+    {
+      "raw_material": 13,
+      "flags": 1,
+      "expected_material": 13
+    },
+    {
+      "raw_material": 14,
+      "flags": 1,
+      "expected_material": 14
+    },
+    {
+      "raw_material": 15,
+      "flags": 1,
+      "expected_material": 15
+    },
+    {
+      "raw_material": 16,
+      "flags": 1,
+      "expected_material": 16
+    },
+    {
+      "raw_material": 17,
+      "flags": 1,
+      "expected_material": 17
+    },
+    {
+      "raw_material": 18,
+      "flags": 1,
+      "expected_material": 18
+    },
+    {
+      "raw_material": 19,
+      "flags": 1,
+      "expected_material": 19
+    },
+    {
+      "raw_material": 20,
+      "flags": 1,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 21,
+      "flags": 1,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 22,
+      "flags": 1,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 23,
+      "flags": 1,
+      "expected_material": 23
+    },
+    {
+      "raw_material": 24,
+      "flags": 1,
+      "expected_material": 24
+    },
+    {
+      "raw_material": 25,
+      "flags": 1,
+      "expected_material": 25
+    },
+    {
+      "raw_material": 26,
+      "flags": 1,
+      "expected_material": 26
+    },
+    {
+      "raw_material": 27,
+      "flags": 1,
+      "expected_material": 27
+    },
+    {
+      "raw_material": 28,
+      "flags": 1,
+      "expected_material": 28
+    },
+    {
+      "raw_material": 29,
+      "flags": 1,
+      "expected_material": 29
+    },
+    {
+      "raw_material": 30,
+      "flags": 1,
+      "expected_material": 30
+    },
+    {
+      "raw_material": 31,
+      "flags": 1,
+      "expected_material": 31
+    },
+    {
+      "raw_material": 0,
+      "flags": 2,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 1,
+      "flags": 2,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 2,
+      "flags": 2,
+      "expected_material": 2
+    },
+    {
+      "raw_material": 3,
+      "flags": 2,
+      "expected_material": 3
+    },
+    {
+      "raw_material": 4,
+      "flags": 2,
+      "expected_material": 4
+    },
+    {
+      "raw_material": 5,
+      "flags": 2,
+      "expected_material": 5
+    },
+    {
+      "raw_material": 6,
+      "flags": 2,
+      "expected_material": 6
+    },
+    {
+      "raw_material": 7,
+      "flags": 2,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 8,
+      "flags": 2,
+      "expected_material": 8
+    },
+    {
+      "raw_material": 9,
+      "flags": 2,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 10,
+      "flags": 2,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 11,
+      "flags": 2,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 12,
+      "flags": 2,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 13,
+      "flags": 2,
+      "expected_material": 13
+    },
+    {
+      "raw_material": 14,
+      "flags": 2,
+      "expected_material": 14
+    },
+    {
+      "raw_material": 15,
+      "flags": 2,
+      "expected_material": 15
+    },
+    {
+      "raw_material": 16,
+      "flags": 2,
+      "expected_material": 16
+    },
+    {
+      "raw_material": 17,
+      "flags": 2,
+      "expected_material": 17
+    },
+    {
+      "raw_material": 18,
+      "flags": 2,
+      "expected_material": 18
+    },
+    {
+      "raw_material": 19,
+      "flags": 2,
+      "expected_material": 19
+    },
+    {
+      "raw_material": 20,
+      "flags": 2,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 21,
+      "flags": 2,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 22,
+      "flags": 2,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 23,
+      "flags": 2,
+      "expected_material": 23
+    },
+    {
+      "raw_material": 24,
+      "flags": 2,
+      "expected_material": 24
+    },
+    {
+      "raw_material": 25,
+      "flags": 2,
+      "expected_material": 25
+    },
+    {
+      "raw_material": 26,
+      "flags": 2,
+      "expected_material": 26
+    },
+    {
+      "raw_material": 27,
+      "flags": 2,
+      "expected_material": 27
+    },
+    {
+      "raw_material": 28,
+      "flags": 2,
+      "expected_material": 28
+    },
+    {
+      "raw_material": 29,
+      "flags": 2,
+      "expected_material": 29
+    },
+    {
+      "raw_material": 30,
+      "flags": 2,
+      "expected_material": 30
+    },
+    {
+      "raw_material": 31,
+      "flags": 2,
+      "expected_material": 31
+    },
+    {
+      "raw_material": 0,
+      "flags": 3,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 1,
+      "flags": 3,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 2,
+      "flags": 3,
+      "expected_material": 2
+    },
+    {
+      "raw_material": 3,
+      "flags": 3,
+      "expected_material": 3
+    },
+    {
+      "raw_material": 4,
+      "flags": 3,
+      "expected_material": 4
+    },
+    {
+      "raw_material": 5,
+      "flags": 3,
+      "expected_material": 5
+    },
+    {
+      "raw_material": 6,
+      "flags": 3,
+      "expected_material": 6
+    },
+    {
+      "raw_material": 7,
+      "flags": 3,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 8,
+      "flags": 3,
+      "expected_material": 8
+    },
+    {
+      "raw_material": 9,
+      "flags": 3,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 10,
+      "flags": 3,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 11,
+      "flags": 3,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 12,
+      "flags": 3,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 13,
+      "flags": 3,
+      "expected_material": 13
+    },
+    {
+      "raw_material": 14,
+      "flags": 3,
+      "expected_material": 14
+    },
+    {
+      "raw_material": 15,
+      "flags": 3,
+      "expected_material": 15
+    },
+    {
+      "raw_material": 16,
+      "flags": 3,
+      "expected_material": 16
+    },
+    {
+      "raw_material": 17,
+      "flags": 3,
+      "expected_material": 17
+    },
+    {
+      "raw_material": 18,
+      "flags": 3,
+      "expected_material": 18
+    },
+    {
+      "raw_material": 19,
+      "flags": 3,
+      "expected_material": 19
+    },
+    {
+      "raw_material": 20,
+      "flags": 3,
+      "expected_material": 20
+    },
+    {
+      "raw_material": 21,
+      "flags": 3,
+      "expected_material": 21
+    },
+    {
+      "raw_material": 22,
+      "flags": 3,
+      "expected_material": 22
+    },
+    {
+      "raw_material": 23,
+      "flags": 3,
+      "expected_material": 23
+    },
+    {
+      "raw_material": 24,
+      "flags": 3,
+      "expected_material": 24
+    },
+    {
+      "raw_material": 25,
+      "flags": 3,
+      "expected_material": 25
+    },
+    {
+      "raw_material": 26,
+      "flags": 3,
+      "expected_material": 26
+    },
+    {
+      "raw_material": 27,
+      "flags": 3,
+      "expected_material": 27
+    },
+    {
+      "raw_material": 28,
+      "flags": 3,
+      "expected_material": 28
+    },
+    {
+      "raw_material": 29,
+      "flags": 3,
+      "expected_material": 29
+    },
+    {
+      "raw_material": 30,
+      "flags": 3,
+      "expected_material": 30
+    },
+    {
+      "raw_material": 31,
+      "flags": 3,
+      "expected_material": 31
+    }
+  ]
+}

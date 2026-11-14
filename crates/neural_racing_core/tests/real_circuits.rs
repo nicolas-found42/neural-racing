@@ -2,6 +2,49 @@ mod common;
 use neural_racing_core::{Action, Circuit, Env, CAR_LENGTH, CAR_WIDTH, UNITS_PER_METRE};
 
 #[test]
+fn circuits_allow_keyboard_inputs_at_human_control_intervals() {
+    for circuit in Circuit::ALL {
+        let mut env = Env::new(circuit.build(), 1);
+        let mut action = Action {
+            steer: 0.0,
+            throttle: 0.0,
+        };
+        let mut steering_remainder: f64 = 0.0;
+        for tick in 0..env.max_steps() {
+            // A test-only driver chooses from the exact keyboard commands,
+            // updating only every 200 ms. It supplies no training examples.
+            if tick % 4 == 0 {
+                let desired = common::pursuit(&env, 15.0 * UNITS_PER_METRE);
+                steering_remainder += desired.steer;
+                action.steer = if steering_remainder.abs() > 0.5 {
+                    steering_remainder.signum()
+                } else {
+                    0.0
+                };
+                steering_remainder -= action.steer;
+                action.throttle = if desired.throttle.abs() > 0.15 {
+                    desired.throttle.signum()
+                } else {
+                    0.0
+                };
+            }
+            if env.step(action).done {
+                break;
+            }
+        }
+        assert!(
+            env.lap_done,
+            "{circuit:?}: binary 5 Hz driver failed: off={} distance={} speed={} slip={} offset={}",
+            env.off_track,
+            env.distance,
+            env.speed / UNITS_PER_METRE,
+            env.slip_angle_deg,
+            env.lateral_offset / UNITS_PER_METRE
+        );
+    }
+}
+
+#[test]
 fn real_layouts_have_physical_lengths_and_widths() {
     for circuit in Circuit::ALL {
         let track = circuit.build();
@@ -21,9 +64,9 @@ fn real_layouts_have_physical_lengths_and_widths() {
             );
         }
         let ratio = CAR_WIDTH / (track.half_width[0] * 2.0);
-        assert!((0.13..0.18).contains(&ratio), "{circuit:?}: {ratio}");
-        assert!((CAR_LENGTH / UNITS_PER_METRE - 5.020).abs() < 1e-9);
-        assert!((CAR_WIDTH / UNITS_PER_METRE - 2.040).abs() < 1e-9);
+        assert!((0.12..0.18).contains(&ratio), "{circuit:?}: {ratio}");
+        assert!((CAR_LENGTH / UNITS_PER_METRE - 4.619).abs() < 1e-9);
+        assert!((CAR_WIDTH / UNITS_PER_METRE - 1.879).abs() < 1e-9);
         println!(
             "{}: {:.3} km, {:.1} m road, car {:.1}% of road width, {} samples",
             circuit.name(),

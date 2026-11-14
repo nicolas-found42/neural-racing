@@ -1,0 +1,1011 @@
+{
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "authority": "controlled-original-opcode-execution-on-upstream-Play-EE",
+  "emulator": {
+    "repository": "https://github.com/jpd002/Play-",
+    "commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+    "architecture": "native arm64 JIT",
+    "rounding": "FE_TOWARDZERO + FTZ; accurate ADD/SUB compile hints on all text blocks",
+    "binary_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53"
+  },
+  "limitations": [
+    "Emulator behavior, not physical PS2 hardware measurements.",
+    "No full game boot or recovered production race-state fixture; controlled numeric routine inputs.",
+    "EE+COP1+COP2 macro engine configured; asynchronous VU microprogram/device integration not part of this direct runner.",
+    "No original instruction patches or callee stubs; SDK memset executes original code for wrappers."
+  ],
+  "comparison_policy": {
+    "auto_gears": "all six packed u32 pairs / twelve i16 values exact, including untouched entries",
+    "tire_dimensions": "<=12 ULP per f32",
+    "kinematics": "<=12 ULP per f32",
+    "hardware_claim": false
+  },
+  "output_layouts": {
+    "auto_gears": "LE u32 pairs of signed i16 gear ratios[0..12]",
+    "tire_dimensions": [
+      "radius",
+      "width",
+      "sidewall"
+    ],
+    "kinematics": [
+      "forward640",
+      "lateral644",
+      "wheel0.forward28",
+      "wheel0.lateral2c",
+      "wheel1.forward28",
+      "wheel1.lateral2c",
+      "wheel2.forward28",
+      "wheel2.lateral2c",
+      "wheel3.forward28",
+      "wheel3.lateral2c"
+    ]
+  },
+  "cases": [
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 150,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "16301490",
+        "0baf0fb1",
+        "078e0928",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 200,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "11ed1085",
+        "09020c4f",
+        "05aa06f5",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 250,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0f700e26",
+        "07680a4b",
+        "048805a3",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 300,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0dd70c9e",
+        "065808f6",
+        "03c704c1",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 340,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0cf00bc0",
+        "05b80830",
+        "0355043d",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 5,
+      "speed": 400,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0bfc0ad2",
+        "05040754",
+        "02d503a7",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 150,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "162814bb",
+        "0cbf1077",
+        "08a20a47",
+        "ffff078e",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 200,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "123710f1",
+        "09f90d1f",
+        "068e07ea",
+        "ffff05aa",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 250,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0ff50ec1",
+        "08520b26",
+        "054e067f",
+        "ffff0488",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 300,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0e8d0d61",
+        "073a09dd",
+        "0479058e",
+        "ffff03c7",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 340,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0dca0c9f",
+        "0697091f",
+        "03fc0500",
+        "ffff0355",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 6,
+      "speed": 400,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0d080bda",
+        "05e20852",
+        "036f0461",
+        "ffff02d5",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 150,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "1673152c",
+        "0dd3115a",
+        "099d0b5b",
+        "078e0865",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 200,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "12d511a5",
+        "0b000e16",
+        "076608e0",
+        "05aa065e",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 250,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "10d50fac",
+        "09550c31",
+        "06110765",
+        "04880527",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 300,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0fa80e7c",
+        "083e0afb",
+        "052f066b",
+        "03c70458",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 340,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0f120de1",
+        "079e0a4e",
+        "04aa05d9",
+        "035503de",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 7,
+      "speed": 400,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "0e960d57",
+        "06ef099a",
+        "04150537",
+        "02d50355",
+        "ffffffff",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 150,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "292f265f",
+        "16731df2",
+        "0dd3115a",
+        "099d0b5b",
+        "078e0865",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 200,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "2454219c",
+        "12a21977",
+        "0b000e16",
+        "076608e0",
+        "05aa065e",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 250,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "22241f5f",
+        "107c1713",
+        "09550c31",
+        "06110765",
+        "04880527",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 300,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "21611e79",
+        "0f2d15c2",
+        "083e0afb",
+        "052f066b",
+        "03c70458",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 340,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "216f1e5e",
+        "0e7e152d",
+        "079e0a4e",
+        "04aa05d9",
+        "035503de",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "auto_gears",
+      "count": 9,
+      "speed": 400,
+      "redline": 85,
+      "final_ratio": 3353,
+      "width": 50,
+      "rim": 18,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "22531ef3",
+        "0ddb14d4",
+        "06ef099a",
+        "04150537",
+        "02d50355",
+        "ffffffff"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 45,
+      "rim": 18,
+      "sidewall": 7,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3e9d5cfa",
+        "3e666665",
+        "3da147ac"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 0,
+      "rim": 18,
+      "sidewall": 7,
+      "adjust": 0,
+      "percent": 0,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3e6dab9e",
+        "3c23d709",
+        "3b65603d"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 50,
+      "rim": 180,
+      "sidewall": 6,
+      "adjust": 1,
+      "percent": 80,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3e9b7174",
+        "3e4cccca",
+        "3d7f2e44"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 50,
+      "rim": 181,
+      "sidewall": 6,
+      "adjust": -1,
+      "percent": 120,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3e9c17e9",
+        "3e999997",
+        "3db39c0c"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 50,
+      "rim": 61,
+      "sidewall": 6,
+      "adjust": -50,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3e1c2116",
+        "3e7ffffe",
+        "3e021ea1"
+      ]
+    },
+    {
+      "kind": "tire_dimensions",
+      "width": 50,
+      "rim": 60,
+      "sidewall": 6,
+      "adjust": 0,
+      "percent": 100,
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "3f5645a0",
+        "3e7ffffe",
+        "3d999997"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": -0.3,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "400f5c29",
+        "41263d70",
+        "3fe147ae",
+        "41263d70",
+        "400fbe76",
+        "411947ae",
+        "3fe08313",
+        "411947ae"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": -0.3,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "41170a3d",
+        "409947ae",
+        "410f5c29",
+        "409947ae",
+        "411722d0",
+        "407eb853",
+        "410f4395",
+        "407eb853"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": 0,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "40000000",
+        "41200000",
+        "40000000",
+        "41200000",
+        "40000000",
+        "41200000",
+        "40000000",
+        "41200000"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": 0,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "41133333",
+        "408ccccd",
+        "41133333",
+        "408ccccd",
+        "41133333",
+        "408ccccd",
+        "41133333",
+        "408ccccd"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": 0.3,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "3fe147ae",
+        "4119c28f",
+        "400f5c29",
+        "4119c28f",
+        "3fe08313",
+        "4126b851",
+        "400fbe76",
+        "4126b851"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": false,
+      "yaw": 0.3,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "410f5c29",
+        "408051ec",
+        "41170a3d",
+        "408051ec",
+        "410f4395",
+        "409a3d70",
+        "411722d0",
+        "409a3d70"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": -0.3,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "400f5c29",
+        "4124a7ef",
+        "3fe147ae",
+        "4124a7ef",
+        "400fbe76",
+        "41176113",
+        "3fe08313",
+        "41176113"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": -0.3,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "41170a3d",
+        "40961cac",
+        "410f5c29",
+        "40961cac",
+        "411722d0",
+        "40771de8",
+        "410f4395",
+        "40771de8"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": 0,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "40000000",
+        "411e6a7f",
+        "40000000",
+        "411e6a7f",
+        "40000000",
+        "411e1965",
+        "40000000",
+        "411e1965"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": 0,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "41133333",
+        "4089a1cb",
+        "41133333",
+        "4089a1cb",
+        "41133333",
+        "4088ff97",
+        "41133333",
+        "4088ff97"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": 0.3,
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "lateral": [
+        1,
+        0,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "40000000",
+        "41200000",
+        "3fe147ae",
+        "41182d0e",
+        "400f5c29",
+        "41182d0e",
+        "3fe08313",
+        "4124d1b7",
+        "400fbe76",
+        "4124d1b7"
+      ]
+    },
+    {
+      "kind": "kinematics",
+      "roll_coupling": true,
+      "yaw": 0.3,
+      "forward": [
+        0.8,
+        0.6,
+        0
+      ],
+      "lateral": [
+        0.6,
+        -0.8,
+        0
+      ],
+      "stopping_pc": "01fff000",
+      "cycle_budget_consumed": 1000,
+      "output_bits": [
+        "41133333",
+        "408ccccd",
+        "410f5c29",
+        "407a4dd4",
+        "41170a3d",
+        "407a4dd4",
+        "410f4395",
+        "4096703b",
+        "411722d0",
+        "4096703b"
+      ]
+    }
+  ]
+}
