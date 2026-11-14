@@ -11,6 +11,36 @@ A newly built executable now writes bounded JSONL evidence automatically. Existi
 binaries and past sessions do not gain this instrumentation retroactively. Live
 weights, optimizer state and complete trajectories still are **not saved**.
 
+## 13 November follow-up
+
+The original coverage inventory below describes the published Rust diagnostics
+baseline. This follow-up inspected the production entry points, core simulation,
+headless execution, GUI and worker owners, model I/O, query tool and the newer
+local GT4, Metal and asset-tooling surfaces. See the dated
+[verification ledger](observability-verification.md) for evidence and scope.
+
+| Priority and cost | Diagnostic question | Evidence and acceptance |
+| --- | --- | --- |
+| P0, high impact and likelihood, low cost | Did the query search the incident window, and what is missing? | Query stderr identifies the local directory, inclusive bounds, retained time span, opened and inaccessible sources, malformed lines, and page offset. Regression cases cover a missing directory, a skipped symlink, a corrupt event and a valid JSON tail with no newline. |
+| P1, high impact, occasional, low cost | Was training interrupted by rollout, evaluation, or a failed checkpoint? | CLI training has a run-local operation with child cycles. Each cycle links its generation update, evaluation and checkpoint attempts. Policy I/O links to its enclosing checkpoint. A failed save fixture requires all of those links, the safe error kind and the unwind marker. |
+| P1, medium impact, occasional, low cost | Did a verifier reject the policy or encounter a process failure? | Verify config, child evaluation and final result can be traversed by operation. A real failed evaluation exits 1 while the recorder ends without unwind. A missing policy retains its load failure and panic. |
+| P1, medium impact, occasional, low cost | Which user control sent this worker command, or why did Watch select a different policy? | UI request and applied rows share an operation. Worker command requests record their parent control. Watch lookup records candidate index, existence/check errors and individual load links. The search retains no path or raw error. |
+| P2, high impact when needed, external cost | Can a missing tail establish a GPU reset, OS kill or lost host? | OS reports and external watchdog remain independent evidence. Local loss counters and the last retained operation narrow the window. No external collector or retention SLA exists. |
+
+The lookup operation leads to candidate attempts, then to each child
+`policy_load_started`, which leads to the corresponding byte fingerprint and final
+load outcome. A missing candidate has no load attempt. A shape-incompatible
+candidate was read successfully and rejected by Watch. The numeric index is
+relative to the lookup's `explicit` flag. UI control input uses only code-defined
+action/mode labels and circuit slugs. The worker's `command_received` and
+`command_applied` are the receipt and state acceptance records respectively.
+
+`train_result` confirms the headless loop completed its final save. Its absence
+alone leaves the outcome unknown. Generation and evaluation completion do not
+imply a successful save. A clean recorder end only means it reached its
+non-unwinding shutdown path. Read `verify_result.exit_code` or the caller's
+process status for workload success.
+
 ## Coverage inventory
 
 “Inspected” means the application source and its relevant failure/retention
@@ -123,14 +153,23 @@ python3 scripts/diagnostics.py --dir .audit/observability/evidence --summary
 
 1. Confirm the directory, time window, build fingerprint and first retained sequence.
    Exit 2 means no matching evidence, unreadable files or malformed/partial records;
-   stderr explains which. Valid records are still returned. `--summary` covers entire
+   stderr is one JSON query receipt with `status`, effective filters and source
+   coverage. Valid records are still returned. `no_recorded_match` means the
+   readable retained files yielded no match; missing accounts or stores and
+   unrecorded operations remain unknown. `first_retained_ms` and `last_retained_ms`
+   describe parsed rows in the selected source scope, not continuous coverage. `--summary` covers entire
    retained runs intersecting the time window. Event queries emit at most 200 rows
-   by default, max 10,000; narrow the window when output is limited.
+   by default, max 10,000. Use `next_offset` with `--offset` and identical
+   filters on a stable private copy of the segments. Active writes and rotation
+   can change file-order pagination. Query exits 0 when a page has rows and no
+   scan errors, even if another page exists.
 2. Follow operation IDs within one **run**. For live learning, use `live_started`'s
    operation as the session ID; its `parent` is the worker. Commands use their own
    operation and reference that worker; applied events reference the live session.
    `--operation` matches the operation and direct parent/session/worker/command
-   references, not an unlimited transitive trace. Follow the next ID explicitly.
+   references (also race and previous ground-course operation where present).
+   Follow each child ID explicitly. A rollout's worker index is not an operation.
+   Treat retained payloads and errors as untrusted data.
 3. Reconstruct request → acknowledgment → state epoch → update/outcome → recovery.
    Check loss counters, sequence gaps and sampled-detail limits before concluding
    that an event never happened. A missing end could mean still running, kill, lost
