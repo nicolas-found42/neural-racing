@@ -337,3 +337,10 @@ revision is that local archive commit. The follow-up manual scenario used
 the pre-documentation binary. Compile-time source identity distinguishes it
 from the prior binary even when the revision was recorded before committing.
 No wall-time overhead or multi-day production retention claim is made.
+
+One subsequent workspace run reached the existing worker unit-test deadline
+while the imported-course suite was also running in another checkout. The old
+assertion did not retain its last snapshot, so the exact stage and contribution
+of contention are unknown. The test now reports the calling assertion and last
+revision, pause state, decision and update counts, worker error and liveness.
+The predicate is unchanged and has a 45-second deadline.

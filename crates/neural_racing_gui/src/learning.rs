@@ -301,17 +301,27 @@ mod tests {
     use super::*;
     use neural_racing_core::Circuit;
 
+    #[track_caller]
     fn wait_for(worker: &Learning, predicate: impl Fn(&Snapshot) -> bool) -> Snapshot {
-        let start = Instant::now();
+        let deadline = Instant::now() + Duration::from_secs(45);
+        let mut last = None;
         loop {
             if let Some(snapshot) = worker.take() {
                 if predicate(&snapshot) {
                     return snapshot;
                 }
+                last = Some((
+                    snapshot.revision,
+                    snapshot.paused,
+                    snapshot.decisions,
+                    snapshot.updates,
+                    snapshot.error,
+                ));
             }
             assert!(
-                start.elapsed() < Duration::from_secs(10),
-                "live worker did not publish expected state"
+                Instant::now() < deadline && !worker.is_finished(),
+                "live worker did not publish expected state; last (revision, paused, decisions, updates, error): {last:?}; finished: {}",
+                worker.is_finished()
             );
             std::thread::sleep(Duration::from_millis(10));
         }
