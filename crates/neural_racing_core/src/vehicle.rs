@@ -98,6 +98,7 @@ impl Env {
             crate::course_catalog::CourseCondition::Dirt => 2,
             crate::course_catalog::CourseCondition::Snow => 3,
             crate::course_catalog::CourseCondition::Unknown => {
+                self.departure_reason = Some("unknown_course_condition");
                 self.off_track = true;
                 return;
             }
@@ -117,13 +118,13 @@ impl Env {
         let origin = self.vehicle_origin;
         let height = self.vehicle_height_origin;
         let track = &self.track;
-        if self
+        if let Err(reason) = self
             .native_vehicle
             .refresh_queried_contacts(&mut |x, y, z| {
                 query_track_road(track, origin, height, x, y, z)
             })
-            .is_err()
         {
+            self.departure_reason = Some(reason);
             self.off_track = true;
         }
         self.vehicle_snapshot = self.planar_state();
@@ -145,13 +146,10 @@ impl Env {
         let origin = self.vehicle_origin;
         let track = &self.track;
         let height = self.vehicle_height_origin;
-        if self
-            .native_vehicle
-            .step_with_road(input, &mut |x, y, z| {
-                query_track_road(track, origin, height, x, y, z)
-            })
-            .is_err()
-        {
+        if let Err(reason) = self.native_vehicle.step_with_road(input, &mut |x, y, z| {
+            query_track_road(track, origin, height, x, y, z)
+        }) {
+            self.departure_reason = Some(reason);
             self.off_track = true;
             return;
         }
@@ -418,5 +416,27 @@ mod tests {
             }
             assert!(env.yaw_rate.abs() < 0.05);
         }
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+
+    #[test]
+    fn native_contact_loss_survives_into_terminal_state_and_clears_on_reset() {
+        let track = crate::Circuit::lookup("gt4-suzuka").unwrap().build();
+        let mut env = Env::new(track, 1);
+        assert_eq!(env.departure_reason(), None);
+        env.x += 100_000.0 * UNITS_PER_METRE;
+        let action = crate::Action {
+            steer: 0.0,
+            throttle: 0.0,
+        };
+        assert!(env.step(action).done);
+        assert!(env.off_track);
+        assert_eq!(env.departure_reason(), Some("road query has no contact"));
+        env.reset();
+        assert_eq!(env.departure_reason(), None);
     }
 }

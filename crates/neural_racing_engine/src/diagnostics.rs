@@ -23,5 +23,5 @@ pub fn state(env: &Env) -> Value {
     json!({"step":env.steps,"x":env.x,"y":env.y,"speed":env.speed,"distance":env.distance,
         "heading":env.heading,"steer_angle":env.steer_angle,"pedal":env.pedal,
         "slip_deg":env.slip_angle_deg,"lateral_offset":env.lateral_offset,"road_half_width":env.road_half_width,
-        "min_ray":env.min_ray,"laps":env.credited_laps(),"off_track":env.off_track,"goal":env.lap_done})
+        "min_ray":env.min_ray,"laps":env.credited_laps(),"off_track":env.off_track,"departure_reason":env.departure_reason(),"goal":env.lap_done})
 }

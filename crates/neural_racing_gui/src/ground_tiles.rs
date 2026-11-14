@@ -11,9 +11,11 @@ use egui::{Color32, Context, Painter, Pos2, Rect, TextureHandle, TextureOptions}
 use neural_racing_core::{
     Circuit, GroundTileGrid, SourceGroundRasterizer, Track, Vec2, TILE_PIXELS, UNITS_PER_METRE,
 };
+use neural_racing_diagnostics::{context, emit, json, operation};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Texture memory bound: 128 tiles of 256² RGBA is 32 MiB.
 pub const TILE_LIMIT: usize = 128;
@@ -38,6 +40,7 @@ struct CompletedTile {
 enum Command {
     Course {
         generation: u64,
+        operation: u64,
         raster: Option<Arc<SourceGroundRasterizer>>,
     },
     Render {
@@ -52,20 +55,32 @@ struct Worker {
 }
 
 impl Worker {
-    fn spawn(wanted: Arc<AtomicU64>) -> Self {
+    fn spawn(wanted: Arc<AtomicU64>, worker: u64) -> Self {
         let (commands, command_rx) = mpsc::channel::<Command>();
         let (result_tx, results) = mpsc::channel::<CompletedTile>();
-        let _ = std::thread::Builder::new()
+        let spawned = std::thread::Builder::new()
             .name("gt4-ground-tiles".into())
             .spawn(move || {
+                let _context = context(worker);
+                emit!("ground_worker_started", worker, json!({}));
                 let mut course = None;
                 while let Ok(command) = command_rx.recv() {
                     match command {
-                        Command::Course { generation, raster } => {
-                            course = raster.map(|raster| (generation, raster));
+                        Command::Course {
+                            generation,
+                            operation,
+                            raster,
+                        } => {
+                            emit!(
+                                "ground_course_received",
+                                operation,
+                                json!({"worker":worker,"generation":generation,
+                                "has_raster":raster.is_some()})
+                            );
+                            course = raster.map(|raster| (generation, operation, raster));
                         }
                         Command::Render { generation, key } => {
-                            let Some((current, raster)) = &course else {
+                            let Some((current, operation, raster)) = &course else {
                                 continue;
                             };
                             if *current != generation
@@ -76,6 +91,7 @@ impl Worker {
                             let Some(grid) = GroundTileGrid::new(key.level) else {
                                 continue;
                             };
+                            let _context = context(*operation);
                             let rgba = raster.render_tile(grid, key.x, key.y);
                             if result_tx
                                 .send(CompletedTile {
@@ -90,7 +106,15 @@ impl Worker {
                         }
                     }
                 }
+                emit!("ground_worker_stopped", worker, json!({}));
             });
+        if let Err(error) = spawned {
+            emit!(
+                "ground_worker_spawn_failed",
+                worker,
+                json!({"error_kind":format!("{:?}",error.kind())})
+            );
+        }
         Self { commands, results }
     }
 }
@@ -114,6 +138,16 @@ struct TileCache {
     requested: HashSet<TileKey>,
     error: Option<String>,
     frame: u64,
+    operation: u64,
+    worker_id: u64,
+    disconnected: bool,
+    pending_since: Option<Instant>,
+    stalled: bool,
+    first_ready: bool,
+    accepted: u64,
+    discarded: u64,
+    superseded: u64,
+    invalid: u64,
 }
 
 impl Default for TileCache {
@@ -128,6 +162,16 @@ impl Default for TileCache {
             requested: HashSet::new(),
             error: None,
             frame: 0,
+            operation: 0,
+            worker_id: 0,
+            disconnected: false,
+            pending_since: None,
+            stalled: false,
+            first_ready: false,
+            accepted: 0,
+            discarded: 0,
+            superseded: 0,
+            invalid: 0,
         }
     }
 }
@@ -214,6 +258,7 @@ pub fn draw(painter: &Painter, view: &View, track: &Track) -> bool {
         (min_y + max_y) * 0.5,
     );
     evict(&mut cache);
+    cache.observe_view(ready, grid.level());
     true
 }
 
@@ -248,52 +293,156 @@ fn visible_tiles(
     }
 }
 
+impl TileCache {
+    fn observe_view(&mut self, ready: bool, level: u8) {
+        if !neural_racing_diagnostics::enabled() {
+            return;
+        }
+        let (event, delay) = if ready {
+            let delay = self.pending_since.take().map(|since| since.elapsed());
+            if self.first_ready && !self.stalled {
+                return;
+            }
+            self.first_ready = true;
+            self.stalled = false;
+            ("ground_visible_ready", delay.unwrap_or_default())
+        } else {
+            let delay = self
+                .pending_since
+                .get_or_insert_with(Instant::now)
+                .elapsed();
+            if self.stalled || delay < Duration::from_secs(2) {
+                return;
+            }
+            self.stalled = true;
+            ("ground_visible_delayed", delay)
+        };
+        emit!(
+            event,
+            self.operation,
+            json!({"worker":self.worker_id,"generation":self.generation,
+            "level":level,"wait_ms":delay.as_millis() as u64,"disconnected":self.disconnected,
+            "pending":self.requested.len(),"resident":self.tiles.len(),"accepted":self.accepted,
+            "discarded":self.discarded,"superseded":self.superseded,"invalid":self.invalid})
+        );
+    }
+
+    fn disconnected(&mut self, stage: &'static str) {
+        if !self.disconnected {
+            self.disconnected = true;
+            emit!(
+                "ground_worker_disconnected",
+                self.operation,
+                json!({"worker":self.worker_id,"stage":stage,"pending":self.requested.len()})
+            );
+        }
+    }
+}
+
 fn begin_course(track: &Track, course: Circuit, cache: &mut TileCache) {
+    let previous = cache.operation;
+    cache.operation = operation();
+    emit!(
+        "ground_course_requested",
+        cache.operation,
+        json!({"previous_course":previous,"circuit":course.slug(),
+        "generation":cache.generation.wrapping_add(1),"previous_pending":cache.requested.len(),
+        "previous_first_ready":cache.first_ready})
+    );
+    let started = Instant::now();
+    cache.pending_since = None;
+    cache.first_ready = false;
+    cache.stalled = false;
+    cache.accepted = 0;
+    cache.discarded = 0;
+    cache.superseded = 0;
+    cache.invalid = 0;
+    cache.disconnected = false;
     cache.course = Some(course);
     cache.generation = cache.generation.wrapping_add(1);
     cache.tiles.clear();
     cache.requested.clear();
     cache.error = None;
     cache.raster = None;
-    match track
+    let mut counts = None;
+    let status = match track
         .source_visual()
         .and_then(|visual| visual.map(|visual| visual.prepare_for_clamp()).transpose())
     {
         Ok(Some(visual)) => {
             let raster = SourceGroundRasterizer::new(visual);
+            counts = Some([
+                raster.triangle_count(),
+                raster.degenerate_faces(),
+                raster.untextured_faces(),
+            ]);
             if raster.triangle_count() == 0 {
                 cache.error = Some(format!(
                     "no usable ground faces ({} degenerate, {} untextured)",
                     raster.degenerate_faces(),
                     raster.untextured_faces()
                 ));
+                "no_usable_faces"
             } else {
                 cache.raster = Some(Arc::new(raster));
+                "prepared"
             }
         }
-        Ok(None) => {}
-        Err(error) => cache.error = Some(error),
-    }
+        Ok(None) => "no_source_visual",
+        Err(error) => {
+            cache.error = Some(error);
+            "decode_or_prepare_failed"
+        }
+    };
+    emit!(
+        "ground_course_prepared",
+        cache.operation,
+        json!({"status":status,
+        "faces":counts,"duration_ms":started.elapsed().as_millis() as u64})
+    );
     let wanted = cache
         .wanted
         .get_or_insert_with(|| Arc::new(AtomicU64::new(0)))
         .clone();
-    let worker = cache.worker.get_or_insert_with(|| Worker::spawn(wanted));
-    let _ = worker.commands.send(Command::Course {
-        generation: cache.generation,
-        raster: cache.raster.clone(),
-    });
+    if cache.worker.is_none() {
+        cache.worker_id = operation();
+        cache.worker = Some(Worker::spawn(wanted, cache.worker_id));
+    }
+    if cache
+        .worker
+        .as_ref()
+        .unwrap()
+        .commands
+        .send(Command::Course {
+            generation: cache.generation,
+            operation: cache.operation,
+            raster: cache.raster.clone(),
+        })
+        .is_err()
+    {
+        cache.disconnected("course_send");
+    }
 }
 
 fn collect_results(ctx: &Context, cache: &mut TileCache) {
     let Some(worker) = &cache.worker else {
         return;
     };
-    while let Ok(done) = worker.results.try_recv() {
+    loop {
+        let done = match worker.results.try_recv() {
+            Ok(done) => done,
+            Err(mpsc::TryRecvError::Empty) => break,
+            Err(mpsc::TryRecvError::Disconnected) => {
+                cache.disconnected("result_receive");
+                break;
+            }
+        };
         if done.generation != cache.generation || !cache.requested.remove(&done.key) {
+            cache.discarded += 1;
             continue;
         }
         if done.rgba.len() != (TILE_PIXELS * TILE_PIXELS * 4) as usize {
+            cache.invalid += 1;
             continue;
         }
         let image = egui::ColorImage::from_rgba_unmultiplied(
@@ -308,6 +457,7 @@ fn collect_results(ctx: &Context, cache: &mut TileCache) {
             image,
             TextureOptions::LINEAR,
         );
+        cache.accepted += 1;
         cache.tiles.insert(
             done.key,
             CachedTile {
@@ -392,7 +542,9 @@ fn request_tiles(
     let level = grid.level();
     // A request for a level the camera has left is skipped by the worker and
     // never answered. Drop it so it cannot occupy the request budget forever.
+    let before = cache.requested.len();
     cache.requested.retain(|key| key.level == level);
+    cache.superseded += (before - cache.requested.len()) as u64;
     let mut missing: Vec<(f64, TileKey)> = Vec::new();
     for y in y0..=y1 {
         for x in x0..=x1 {
@@ -418,6 +570,9 @@ fn request_tiles(
             .is_ok()
         {
             cache.requested.insert(key);
+        } else {
+            cache.disconnected("tile_send");
+            break;
         }
     }
     if !cache.requested.is_empty() {
@@ -437,5 +592,76 @@ fn evict(cache: &mut TileCache) {
             break;
         };
         cache.tiles.remove(&key);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "uses a process-global recorder; run this fixture in isolation"]
+    fn disconnected_worker_records_pending_view_once() {
+        let dir =
+            std::env::temp_dir().join(format!("neural-racing-tiles-loss-{}", std::process::id()));
+        // Only initialize the process-global recorder in an isolated invocation.
+        let retained = std::env::var_os("NEURAL_RACING_TILE_LOSS_TEST_DIR");
+        let dir = retained.clone().map_or(dir, Into::into);
+        std::env::set_var("NEURAL_RACING_DIAGNOSTICS_DIR", &dir);
+        let diagnostics = neural_racing_diagnostics::init("ground_disconnect_test");
+        let (commands, command_rx) = mpsc::channel();
+        let (result_tx, results) = mpsc::channel();
+        drop(command_rx);
+        drop(result_tx);
+        let id = operation();
+        let mut cache = TileCache {
+            worker: Some(Worker { commands, results }),
+            operation: id,
+            worker_id: operation(),
+            pending_since: Some(Instant::now() - Duration::from_secs(3)),
+            ..Default::default()
+        };
+        cache.requested.insert(TileKey {
+            level: 0,
+            x: 0,
+            y: 0,
+        });
+        let ctx = Context::default();
+        for _ in 0..10 {
+            collect_results(&ctx, &mut cache);
+            cache.observe_view(false, 0);
+        }
+        assert_eq!(cache.requested.len(), 1);
+        drop(diagnostics);
+
+        let output = std::process::Command::new("python3")
+            .arg(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../scripts/diagnostics.py"
+            ))
+            .arg("--dir")
+            .arg(&dir)
+            .args(["--operation", &id.to_string()])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let rows: Vec<neural_racing_diagnostics::Value> = std::str::from_utf8(&output.stdout)
+            .unwrap()
+            .lines()
+            .map(|line| line.parse().unwrap())
+            .collect();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["event"], "ground_worker_disconnected");
+        assert_eq!(rows[0]["data"]["stage"], "result_receive");
+        assert_eq!(rows[1]["event"], "ground_visible_delayed");
+        assert_eq!(rows[1]["data"]["disconnected"], true);
+        assert_eq!(rows[1]["data"]["pending"], 1);
+        if retained.is_none() {
+            std::fs::remove_dir_all(dir).unwrap();
+        }
     }
 }

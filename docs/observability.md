@@ -56,7 +56,7 @@ implementation, not proof that it ran in a deployed session.
 | Live learning — inspected: [live](../crates/neural_racing_engine/src/live.rs) | Last 160 attempts **per circuit**, current counters, in-memory best policy; all lost on exit | Session seed/config, track epochs, sampled terminal state with eight recent sparse decisions, exact outcome totals, update metrics, audit/restore events, non-finite inference/environment errors | Real updates, synthetic non-finite inference and recovery, forced stall/timeout/restart, collapsed policy restore; retrieved disk evidence |
 | Parallel training/evaluation — inspected: [engine](../crates/neural_racing_engine/src/lib.rs) | Stdout summaries; optional `train --log PATH` truncates file on startup, no time/run correlation, write errors ignored | Generation operation propagated into rollout threads; worker/episode/track seeds and variants; start/end, evaluation sample rows and totals; checkpoint roles; legacy log write failures | One real generation, rollout, evaluation and three checkpoint writes; failed verification process retains result |
 | ML update and persistence — inspected: [train](../crates/neural_racing_ml/src/train.rs), [policy](../crates/neural_racing_ml/src/policy.rs), [Adam](../crates/neural_racing_ml/src/adam.rs), [matrix](../crates/neural_racing_ml/src/matrix.rs) | KL/error results passed upward; direct binary save overwrites; files have format version but no incident timeline | Sampled update KL/scale/norm/duration plus exact rollback count; load/save start/end, error kind, byte count/content fingerprint; checkpoint generation and role | Existing numerical/rollback tests, actual missing/invalid file loads, successful save/load, real restore fixture. Power-loss-safe model writes are not implemented |
-| Physics, sensors, tracks, RNG — inspected: [env](../crates/neural_racing_core/src/env.rs), [vehicle](../crates/neural_racing_core/src/vehicle.rs), [track](../crates/neural_racing_core/src/track.rs), [circuits](../crates/neural_racing_core/src/circuit.rs), [RNG](../crates/neural_racing_core/src/rng.rs) | Deterministic seeded simulation, assertions/tests, current env; generator's 512-rejection fallback silent | State captured at workflow boundaries; geometry ID includes widths; rare `track_generation_fallback` captures seed/rejection count | Regression tests on all real circuits, procedural geometry, tire/steering dynamics; fallback branch inspected, not forced end to end |
+| Physics, sensors, tracks, RNG — inspected: [env](../crates/neural_racing_core/src/env.rs), [vehicle](../crates/neural_racing_core/src/vehicle.rs), [GT4 runtime](../crates/neural_racing_core/src/gt4/runtime.rs), [track](../crates/neural_racing_core/src/track.rs), [circuits](../crates/neural_racing_core/src/circuit.rs), [RNG](../crates/neural_racing_core/src/rng.rs) | Deterministic seeded simulation, assertions/tests, current env; generator's 512-rejection fallback silent | State captured at workflow boundaries; geometry ID includes widths; rare `track_generation_fallback` captures seed/rejection count | Regression tests on all real circuits, procedural geometry, tire/steering dynamics; fallback branch inspected, not forced end to end |
 | Painting/dashboard and bundled assets — inspected: GUI render/widgets/palette, circuit coordinate arrays, docs/reference | Visual gauges are not a persistent telemetry source; PNGs and published benchmark reports survive until overwritten/deleted | UI health records max frame interval, frame count, snapshot age, stale revision count and worker liveness | Actual egui/wgpu render probe; no GPU command capture. Reference images/GeoJSON/licenses have no runtime logging requirement (not applicable) |
 | Diagnostic transport/storage/query — inspected: [recorder](../crates/neural_racing_diagnostics/src/lib.rs), [build identity](../crates/neural_racing_diagnostics/build.rs), [query](../scripts/diagnostics.py) | Absent | Bounded async local store; sequence/loss counters; query by time/run/operation/event, explicit partial/missing-data notices | Rotation, expiry, active-file locking, disk-unavailable/recovery, queue overflow, oversized event, partial line, redaction, fresh-process retrieval |
 | Other repository artifacts — inspected | README, validation/capacity reports, screenshots, shipped policy, old `.audit/perf-shared-comparison.jsonl`, empty root file `8`; no additional executable source found in scratch/audit inventory | Existing artifacts preserved; reports are claims from past runs, not incident traces | Old JSONL contains 10 performance rows with empty failure lists, but **no timestamps or commit IDs**. The default diagnostic directory did not exist before this pass |
@@ -64,6 +64,21 @@ implementation, not proof that it ran in a deployed session.
 | Network services, database history, distributed retries — not applicable | No such application boundary exists in the inspected code/manifests | None added | No claim about infrastructure outside this repository |
 
 ## Priorities and acceptance checks
+
+The throughput iteration adds `live_execution_changed` for explicit simulation
+worker changes, carrying the worker count, inference batch size and unchanged
+decision/update counters under the existing live-session operation. Worker
+physics tasks propagate that operation explicitly because thread-local context
+is not inherited by a pool. No per-step disk records or model parameters are
+added. The serial/parallel parity test checks state, rewards, restarts and model
+updates, and a real four-worker benchmark's change and clean shutdown were
+retrieved from local run `1793814081451-57133-1`; see
+[the implementation ledger](speed-capacity.md).
+
+`learning_assessment` initializes the same bounded recorder. Its explicit policy
+exports are separate from diagnostic retention and require a caller-selected
+output directory. The experimental collector, Adam worker and Metal records in
+the historical ledger refer to local builds with those experiments.
 
 | Priority; impact / likelihood / diagnostic value | Gap or scenario | Acceptance / outcome |
 | --- | --- | --- |
@@ -104,17 +119,31 @@ stall/timeout, panic, queue saturation and SIGKILL probes are **synthetic**.
   commands are unsampled before queue limits. Live/worker/UI health every ten seconds
   while their respective loop runs; reset/stop also capture live totals. Evaluation
   detail: first four and every 100th track. Headless rollout start/end is unsampled.
-- `live_progress.end_counts` = `[goal, crash, stalled, timeout]`, cumulative per live
+- `live_progress.end_counts` = `[goal, crash, stalled, timeout, section]`, cumulative per live
   session; updates/attempts continue over circuit changes, reset creates a new session.
   History tuples = `[step, speed, distance, lateral_offset, steer_command, throttle_command]`.
   Distances/speeds use core world units; divide by `UNITS_PER_METRE` for metres/m/s.
-  A decision is 0.05 simulated seconds. Requested infinite speed is encoded as
+  A decision is 0.05 simulated seconds. Version-four policies hold one sampled
+  control for four decisions (200 ms); update rows are sampled controls, not physics
+  decisions. `pedal_counts` = `[braking (< -0.1), coasting, throttle (> 0.1)]` and
+  `saturated_controls` counts individual steering/pedal values with magnitude > .98.
+  Section completion is distinct from a lap or five-lap goal. `section_attempts`
+  and `section_successes` are per current circuit; end/pedal counts are per session.
+  Curriculum levels 0–4 are progressively longer/faster approaches, 5 is mastered.
+  `curriculum_changed` records promotions/regressions, levels and stint readiness;
+  progress carries current levels. `live_update.action_entropy` is bounded-control
+  differential entropy; `latent_sigma` is the Gaussian scale before tanh. Earlier
+  builds had four end counts and reported log sigma as entropy.
+  Requested infinite speed is encoded as
   `null` plus `uncapped:true`; other non-finite numbers serialize as `null`.
 - Every record has wall-clock Unix milliseconds, monotonic elapsed milliseconds,
   schema, run, sequence, operation, and cumulative dropped/I/O-error counters.
   Sequence numbers are assigned before enqueueing; concurrent threads can arrive
   out of sequence. Use IDs and request/ack pairs for causality, not file order.
-  Source fingerprints cover workspace Rust source, manifests and Cargo.lock;
+  Source fingerprints cover workspace Rust, embedded binary parameter assets,
+  recovered course `.mesh`, `.stations`, `.boundaries`, `.edges` and compressed
+  display assets, plus sprite PNGs and calibration JSON,
+  manifests and Cargo.lock;
   fingerprints are comparison keys, **not security hashes**, and do not recover code.
 - Each segment repeats revision, source fingerprint, version, build profile,
   OS/architecture, math backend and retention/sampling policy. A git revision alone
@@ -183,3 +212,54 @@ python3 scripts/diagnostics.py --dir .audit/observability/evidence --summary
    its evidence. An emitted event alone proves neither root cause nor a fix.
 
 See [observed verification and incident reconstructions](observability-verification.md).
+
+## GT4 parameter and course identity
+
+The build source fingerprint includes embedded `.bin` parameter assets and
+`.mesh`/`.stations`/`.boundaries`/`.edges` and `.gz` display assets, sprite PNG/RGBA
+and JSON calibration inputs under `crates/`, alongside Rust
+sources and Cargo metadata. A parameter-only or course-asset-only change therefore
+produces a different retained run identity. These are extracted stock car/global
+snapshots and recovered road inputs, not user input or the disc image. Retention and
+privacy limits above are unchanged. Verify by changing a copied build input in an
+isolated check; historical fingerprints from before this coverage change did not
+include binary assets. The isolated build check recorded in the local
+`.audit/gt4-tracks/fingerprint-check.json` changed only a copied mesh, then only
+a copied station input; both changes produced distinct fingerprints. It does not
+claim that older running binaries include the new course coverage.
+
+## GT4 runtime and asset-tooling coverage
+
+| Area and status | State and retention boundary | What can be retrieved |
+| --- | --- | --- |
+| GT4 physics, conditions, route assets and native road query — inspected | The simulation owns contacts, forces, checkpoint progress and learned observations in memory. Source assets are immutable embedded data. Runtime and probes use the same road-query adapter. | Sampled terminal states and headless rollout/evaluation rows now carry `departure_reason`: corridor boundary, unknown course condition, no wheel contact, unsupported contact, or null. The reason is the first condition that marked the simulation off track. It cannot distinguish a mesh defect from a car leaving valid ground. Source identity comes from the run header and track/circuit evidence. |
+| Source visual preparation, asynchronous tiles, renderer and sprite — inspected | The GUI decodes source visuals, stages raster work and owns GPU textures in a bounded resident cache. The tile worker owns the current raster generation. Raw decoded pixels and texture handles are transient. | Ground course request, preparation result and worker receipt share an operation ID. First visible readiness, a continuous interval of at least two seconds with missing visible tiles, later recovery and channel disconnect are retained. Preparation distinguishes absent asset, decode/prepare failure, unusable faces, and success. No native GPU fence or pixel history is captured. Sprite decode failures can be narrowed by the panic location. |
+| Parallel rollout, curriculum and CPU math — inspected | Rayon simulation work and PPO/Adam state are process-local. | Use live session, rollout/cycle, curriculum and pool configuration events described above. Diagnostic recording is shared with the desktop and CLI. |
+| Offline source extraction, route binding, visual exports and original-instruction oracle — inspected | Operators invoke Python/C++ tooling against local source data and a pinned runner. Source identity and bounds are in input/output receipts, while CLI failures and interruptions depend on caller output retention. These jobs do not use the simulator recorder. | Inspect [the extraction workflow](../scripts/gt4/README.md) and [reference receipts](reference/gt4/). For a retained probe input, use `python3 scripts/gt4/course_probe_receipt.py RECEIPT --verify`. Source volumes and original binary inputs are required to rerun extraction. No new original binary processing was needed for the runtime failure checks. |
+| Asset images, reference data, research notes and scratch Rust package — inspected for ownership | Embedded data contributes to build identity. Research outputs are explicit files and may be replaced or absent in a fresh clone. The scratch package is outside the application workspace. | Source/receipt hashes and test reports can identify a build input or experiment. They are separate from application event history. |
+| OS/driver internals and remote archival — inaccessible or unavailable | A matching local OS report was not found by name. No remote evidence store was identified. | A missing local process tail cannot establish an OS or driver failure. Cross-host reconstruction requires separately retained evidence and account/host access. |
+
+For a blank or delayed ground view, search `ground_course_requested` in the
+symptom window, then query its operation. Follow `previous_course` if the
+previous view had work pending at the course switch. Compare `ground_course_prepared`
+with `ground_course_received` before inspecting `ground_visible_ready`,
+`ground_visible_delayed` and `ground_worker_disconnected`. Counts are per course
+generation. `superseded` means the UI removed requests for a previous tile level.
+`discarded` counts returned results ignored by the GUI. Neither is a count of
+worker cancellations. `wait_ms` measures a continuous sequence of frames with
+incomplete coverage and can include camera movement or frame stalls. Readiness
+means the GUI can draw all currently visible tiles. It does not confirm display
+submission or completion. No per-tile or per-physics-step rows are added.
+
+```sh
+python3 scripts/diagnostics.py --event ground_course_requested --limit 1000
+python3 scripts/diagnostics.py --run RUN --operation OP --limit 1000
+python3 scripts/diagnostics.py --run RUN --event live_attempt_ended --event race_ended
+```
+
+The GT4-specific acceptance checks require a real textured course to reach
+visible readiness after worker receipt, a course without source artwork to
+retain the fallback reason, and a controlled off-mesh pose to retain the road
+contact rejection. Native GPU crash, corrupted bundled assets and external
+watchdog integration remain unexercised. Exact input replay and independent
+retention require additional product or infrastructure work.

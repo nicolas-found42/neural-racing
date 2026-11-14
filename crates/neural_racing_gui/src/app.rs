@@ -349,6 +349,11 @@ impl App {
             UiAction::SetMode(mode) => {
                 if self.practice_selected() && mode != Mode::Manual {
                     self.status = "Practice areas support manual driving. Select a race route to learn or watch.".into();
+                    emit!(
+                        "ui_control_rejected",
+                        operation,
+                        json!({"reason":"practice_requires_manual"})
+                    );
                     return;
                 }
                 if mode == Mode::Watch {

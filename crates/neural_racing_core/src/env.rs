@@ -77,6 +77,7 @@ pub struct Env {
     pub(crate) vehicle_snapshot: [f64; 8],
     pub(crate) vehicle_origin: [f64; 3],
     pub(crate) vehicle_height_origin: f32,
+    pub(crate) departure_reason: Option<&'static str>,
     pub track: Track,
     pub laps: i32,
     pub x: f64,
@@ -154,6 +155,7 @@ impl Env {
             vehicle_snapshot: [0.0; 8],
             vehicle_origin: [0.0; 3],
             vehicle_height_origin: 0.0,
+            departure_reason: None,
             track,
             laps,
             x: 0.0,
@@ -256,6 +258,11 @@ impl Env {
         }
     }
 
+    /// First observed reason this attempt was marked off track by the simulator.
+    pub fn departure_reason(&self) -> Option<&'static str> {
+        self.departure_reason
+    }
+
     pub fn position(&self) -> Vec2 {
         Vec2 {
             x: self.x,
@@ -335,6 +342,7 @@ impl Env {
         self.distance = 0.0;
         self.min_ray = RAY_RANGE;
         self.off_track = false;
+        self.departure_reason = None;
         self.lap_done = false;
         self.last_reward = 0.0;
         self.last_action = Action {
@@ -474,6 +482,9 @@ impl Env {
         let done = if self.off_track
             || (!self.track.free_roam && nearest.lateral.abs() > nearest.half_width)
         {
+            if !self.off_track {
+                self.departure_reason = Some("corridor_boundary");
+            }
             self.off_track = true;
             components.off_track = -OFF_TRACK_PENALTY;
             reward += components.off_track;

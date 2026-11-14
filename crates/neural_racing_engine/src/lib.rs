@@ -96,7 +96,7 @@ fn decide(
 /// Runs one race on `track`, sampling from the policy and recording the rows
 /// the estimator consumes. Finite differences are not involved anywhere.
 pub fn rollout(policy: &Policy, track: Track, laps: i32, rng: &mut Rng) -> Rollout {
-    rollout_inner(policy, track, 0, laps, rng, true, 0)
+    rollout_inner(policy, track, 0, laps, rng, true, 0).0
 }
 
 /// A full practice race from a rotated checkpoint sequence, using the same
@@ -108,7 +108,7 @@ pub fn rollout_at_checkpoint(
     checkpoint: usize,
     rng: &mut Rng,
 ) -> Rollout {
-    rollout_inner(policy, track, 0, laps, rng, true, checkpoint)
+    rollout_inner(policy, track, 0, laps, rng, true, checkpoint).0
 }
 
 fn rollout_inner(
@@ -119,7 +119,7 @@ fn rollout_inner(
     rng: &mut Rng,
     explore: bool,
     checkpoint: usize,
-) -> Rollout {
+) -> (Rollout, Option<&'static str>) {
     let mut env = Env::new(track, laps);
     if checkpoint != 0 {
         env.reset_at_checkpoint(checkpoint);
@@ -168,28 +168,33 @@ fn rollout_inner(
     let mut batch = Batch::new(policy.obs_dim, policy.act_dim);
     batch.push_trajectory(&trajectory, true);
 
-    Rollout {
-        report: EpisodeReport {
-            track_seed,
-            reward: f64::from(rewards.iter().sum::<f32>()),
-            distance: info.distance,
-            checkpoints: info.checkpoints,
-            laps_completed: info.laps_completed,
-            lap_done: info.lap_done,
-            off_track: info.off_track,
-            steps: info.steps,
-            mean_speed: speed_sum / f64::from(steps.max(1)),
-            min_wall,
-            lap_steps,
+    (
+        Rollout {
+            report: EpisodeReport {
+                track_seed,
+                reward: f64::from(rewards.iter().sum::<f32>()),
+                distance: info.distance,
+                checkpoints: info.checkpoints,
+                laps_completed: info.laps_completed,
+                lap_done: info.lap_done,
+                off_track: info.off_track,
+                steps: info.steps,
+                mean_speed: speed_sum / f64::from(steps.max(1)),
+                min_wall,
+                lap_steps,
+            },
+            batch,
         },
-        batch,
-    }
+        env.departure_reason(),
+    )
 }
 
 /// One deterministic race using the mean action; used for evaluation and the UI.
 pub fn deterministic_episode(policy: &Policy, track: Track, laps: i32) -> EpisodeReport {
     let mut rng = Rng::new(0);
-    rollout_inner(policy, track, 0, laps, &mut rng, false, 0).report
+    rollout_inner(policy, track, 0, laps, &mut rng, false, 0)
+        .0
+        .report
 }
 
 #[derive(Clone, Debug)]
@@ -239,13 +244,16 @@ pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> Eva
     let mut rows = Vec::with_capacity(count);
     for index in 0..count {
         let seed = base_seed.wrapping_add(index as u64);
-        let report = deterministic_episode(policy, Track::random(seed), laps);
+        let mut rng = Rng::new(0);
+        let (rollout, departure_reason) =
+            rollout_inner(policy, Track::random(seed), 0, laps, &mut rng, false, 0);
+        let report = rollout.report;
         if index < 4 || index % 100 == 0 {
             emit!(
                 "evaluation_track",
                 op,
                 json!({"index":index,"seed":seed,"finished":report.finished(),
-                "off_track":report.off_track,"steps":report.steps,"distance":report.distance,"min_wall":report.min_wall})
+                "off_track":report.off_track,"departure_reason":departure_reason,"steps":report.steps,"distance":report.distance,"min_wall":report.min_wall})
             );
         }
         rows.push(EvalRow {
@@ -377,7 +385,7 @@ impl Trainer {
                                 1 => Track::random_narrow(track_seed),
                                 _ => Track::random(track_seed),
                             };
-                            let rollout = rollout_inner(
+                            let (rollout, departure_reason) = rollout_inner(
                                 policy,
                                 track,
                                 track_seed,
@@ -388,7 +396,7 @@ impl Trainer {
                             );
                             let report = &rollout.report;
                             emit!("rollout_finished", op, json!({"worker":worker,"episode":episode,"track_seed":track_seed,
-                                "finished":report.finished(),"off_track":report.off_track,"steps":report.steps,"distance":report.distance}));
+                                "finished":report.finished(),"off_track":report.off_track,"departure_reason":departure_reason,"steps":report.steps,"distance":report.distance}));
                             rollouts.push(rollout);
                         }
                         rollouts

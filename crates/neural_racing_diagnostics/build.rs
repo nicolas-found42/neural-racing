@@ -10,8 +10,18 @@ fn sources(dir: &Path, hash: &mut u64) {
     for path in paths {
         if path.is_dir() {
             sources(&path, hash);
-        } else if path.extension().is_some_and(|s| s == "rs")
-            || path.file_name().is_some_and(|s| s == "Cargo.toml")
+        } else if path.extension().is_some_and(|s| {
+            s == "rs"
+                || s == "bin"
+                || s == "mesh"
+                || s == "stations"
+                || s == "boundaries"
+                || s == "edges"
+                || s == "png"
+                || s == "rgba"
+                || s == "gz"
+                || s == "json"
+        }) || path.file_name().is_some_and(|s| s == "Cargo.toml")
         {
             println!("cargo:rerun-if-changed={}", path.display());
             for byte in fs::read(path).unwrap() {
