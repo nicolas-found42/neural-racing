@@ -132,7 +132,11 @@ fn checkpoint_crossings_respect_the_local_width() {
     };
     assert_eq!(offset(0.0), 1, "crossing the middle of a gate counts");
     assert_eq!(offset(gate.half_width * 0.9), 1, "the road is drivable");
-    assert_eq!(offset(gate.half_width * 1.1), 0, "outside is not a crossing");
+    assert_eq!(
+        offset(gate.half_width * 1.1),
+        0,
+        "outside is not a crossing"
+    );
 }
 
 #[test]
@@ -174,15 +178,25 @@ fn rays_always_report_a_wall_inside_the_sensor_range() {
 #[test]
 fn observations_are_normalized_and_heading_aware() {
     let env = Env::new(Track::random(7), DEFAULT_LAPS);
-    assert_eq!(env.obs.len(), OBS_DIM);
+    assert_eq!(env.rays.len(), 44);
+    assert_eq!(env.obs.len(), 100);
     let speed = env.obs[0];
     assert!((speed - env.vx as f32 / MAX_SPEED as f32).abs() < 1e-6);
     // Facing along the start tangent: cos(heading error) is 1.
     assert!((env.obs[6] - 1.0).abs() < 1e-5);
     assert!(env.obs[5].abs() < 1e-5);
     assert!((env.obs[4] as f64).abs() < 1.0);
-    for ray in &env.obs[STATE_FEATURES..] {
-        assert!((0.0..=1.0).contains(ray));
+    for (index, (&observation, &distance)) in
+        env.obs[STATE_FEATURES..].iter().zip(&env.rays).enumerate()
+    {
+        assert!((0.0..=1.0).contains(&observation));
+        assert!((observation as f64 - (distance / RAY_RANGE).sqrt()).abs() < 1e-6);
+        let angle = env.heading - 0.6 * std::f64::consts::PI
+            + 1.2 * std::f64::consts::PI * index as f64 / 43.0;
+        let mut expected = [0.0];
+        env.track
+            .cast_rays_into(env.position(), &[angle], &mut expected);
+        assert!((distance - expected[0]).abs() < 1e-8);
     }
 }
 

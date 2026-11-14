@@ -1,0 +1,91 @@
+{
+  "description": "Actual unchanged original RNW negative-Y face and positive-Y native-selected face; only vertex indices remapped for this two-triangle envelope.",
+  "source_course_sha256": "9cb73e32c0342bd11eaeb604617c77f9cb49cee49282e5539914b2a68463430b",
+  "source_mesh_sha256": "29a3c7bba761be5928c24ace429f4500d28b99942071f35aaf4ae5f48844f09e",
+  "fixture_sha256": "ada0124c2c1a2263ae1bc1aa6222f473e63aad5629e21a776895725832da29cf",
+  "fixture_file": "crates/neural_racing_core/src/circuit_data/gt4_fixtures/montecarlo-native-backface.mesh",
+  "triangles": [
+    {
+      "source_triangle": 1332,
+      "source_vertices": [
+        1076,
+        1004,
+        1077
+      ],
+      "vertices": [
+        [
+          231.96302795410156,
+          45.407203674316406,
+          -102.45516204833984
+        ],
+        [
+          251.52261352539062,
+          45.6535758972168,
+          -110.04200744628906
+        ],
+        [
+          247.0933074951172,
+          45.44352340698242,
+          -106.452880859375
+        ]
+      ],
+      "native_normal_y_unnormalized": -36.597368531045504
+    },
+    {
+      "source_triangle": 9627,
+      "source_vertices": [
+        6828,
+        6839,
+        6837
+      ],
+      "vertices": [
+        [
+          241.7312774658203,
+          45.616363525390625,
+          -104.60659790039062
+        ],
+        [
+          246.67971801757812,
+          45.75446319580078,
+          -108.40182495117188
+        ],
+        [
+          241.3294677734375,
+          45.616451263427734,
+          -106.49971008300781
+        ]
+      ],
+      "native_normal_y_unnormalized": 10.892912107286975
+    }
+  ],
+  "native_original_query": {
+    "course": "montecarlo",
+    "index": 1332,
+    "query": [
+      243.52631632486978,
+      45.501434326171875,
+      -106.31668345133464
+    ],
+    "source_triangle": 1332,
+    "source_winding_normal": [
+      -0.7093746733735316,
+      -36.597368531045504,
+      -3.0172816846170463
+    ],
+    "material": 0,
+    "flags": 0,
+    "kind": "actualnegativeYfacecentroid",
+    "native_v_bits": "00000000",
+    "native_v": 0.0,
+    "native_hint": "0284259b",
+    "native_hit_height": 45.66817092895508,
+    "native_contact_flags_word": "00000700",
+    "native_query_succeeded": true,
+    "batch": 0
+  },
+  "authority": "unchanged original3e5818\u2192395760\u21923e6858 on upstream Play EE; actualBSP search/traverse/checkHit andclusterlimitedquadprojection; no host geometry callbacks",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+  "emulator_commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+  "native_results_sha256": "b276935aca8f05e3da8aefca175a72591ffc1f82f65e9c3c91e8822492171e54"
+}

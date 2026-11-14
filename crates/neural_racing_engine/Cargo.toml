@@ -6,8 +6,10 @@ license.workspace = true
 description = "Parallel rollout and training engine for the racing policy"
 
 [dependencies]
+neural_racing_diagnostics = { path = "../neural_racing_diagnostics" }
 neural_racing_core = { path = "../neural_racing_core" }
 neural_racing_ml = { path = "../neural_racing_ml" }
+rayon = "1.12.0"
 
 [[bin]]
 name = "train"

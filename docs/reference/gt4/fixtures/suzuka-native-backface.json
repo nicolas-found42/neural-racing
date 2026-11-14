@@ -1,0 +1,91 @@
+{
+  "description": "Actual unchanged original RNW negative-Y face and positive-Y native-selected face; only vertex indices remapped for this two-triangle envelope.",
+  "source_course_sha256": "2b947983d520f82e875b70ffce5cfc718552a1a8fbc43d2e4a913ac20e6d7965",
+  "source_mesh_sha256": "74562a39d1d03179c2bb417b2a00fb1848d156146b14cbfb0ef6bed0d543b041",
+  "fixture_sha256": "61939498740a9fed721228d71cbf2df5283be135991c0cb228cab5fbf35ee4df",
+  "fixture_file": "crates/neural_racing_core/src/circuit_data/gt4_fixtures/suzuka-native-backface.mesh",
+  "triangles": [
+    {
+      "source_triangle": 11625,
+      "source_vertices": [
+        6741,
+        6740,
+        6739
+      ],
+      "vertices": [
+        [
+          -0.18397049605846405,
+          13.949175834655762,
+          -324.14129638671875
+        ],
+        [
+          -2.9645824432373047,
+          14.017483711242676,
+          -321.9063415527344
+        ],
+        [
+          -6.0134687423706055,
+          14.1030912399292,
+          -320.0141296386719
+        ]
+      ],
+      "native_normal_y_unnormalized": -1.5526161176803726
+    },
+    {
+      "source_triangle": 11626,
+      "source_vertices": [
+        6741,
+        6739,
+        6814
+      ],
+      "vertices": [
+        [
+          -0.18397049605846405,
+          13.949175834655762,
+          -324.14129638671875
+        ],
+        [
+          -6.0134687423706055,
+          14.1030912399292,
+          -320.0141296386719
+        ],
+        [
+          -0.4728764295578003,
+          13.826155662536621,
+          -315.7475891113281
+        ]
+      ],
+      "native_normal_y_unnormalized": 47.73873887989521
+    }
+  ],
+  "native_original_query": {
+    "course": "suzuka",
+    "index": 11625,
+    "query": [
+      -3.0540072272221246,
+      14.023250261942545,
+      -322.0205891927083
+    ],
+    "source_triangle": 11625,
+    "source_winding_normal": [
+      -0.06207598216133192,
+      -1.5526161176803726,
+      -0.029778367985471732
+    ],
+    "material": 2,
+    "flags": 0,
+    "kind": "actualnegativeYfacecentroid",
+    "native_v_bits": "45aa8e1b",
+    "native_v": 5457.76318359375,
+    "native_hint": "0a452d6a",
+    "native_hit_height": 14.023537635803223,
+    "native_contact_flags_word": "00000200",
+    "native_query_succeeded": true,
+    "batch": 1
+  },
+  "authority": "unchanged original3e5818\u2192395760\u21923e6858 on upstream Play EE; actualBSP search/traverse/checkHit andclusterlimitedquadprojection; no host geometry callbacks",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+  "emulator_commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+  "native_results_sha256": "b276935aca8f05e3da8aefca175a72591ffc1f82f65e9c3c91e8822492171e54"
+}

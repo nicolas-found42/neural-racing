@@ -6,4 +6,5 @@ license.workspace = true
 description = "Residual driving policy, Adam, and the KL-limited policy-gradient update (pure Rust)"
 
 [dependencies]
+neural_racing_diagnostics = { path = "../neural_racing_diagnostics" }
 neural_racing_core = { path = "../neural_racing_core" }

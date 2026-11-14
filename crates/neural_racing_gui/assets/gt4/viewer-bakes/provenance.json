@@ -1,0 +1,86 @@
+{
+  "donor_directory": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes",
+  "code": "GT4_BMW_0003",
+  "selected_car": "m3_gtr_alms_01",
+  "original_model_sha256": "183c4ab90b650d167ff020e309c8a196f562cca5abde220843d29fc843c339da",
+  "files": [
+    {
+      "file": "GT4_BMW_0003-source.png",
+      "sha256": "5fc9bc5202aeeee8b51fec6469671652e3926b2ca37c170627ae33f5356419c3",
+      "bytes": 188211
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-060.png",
+      "sha256": "53de358dbc9b1c9fb2665d4e6a99343177b07bb1400e89c5e47cd23c51bc10b4",
+      "bytes": 189255
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-050.png",
+      "sha256": "9f78349fb4b1c2ecee7945f503ebdac0cadf8116ecc241bee320dbcf3dacd4c3",
+      "bytes": 189221
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-040.png",
+      "sha256": "171aa4c8aa2fd9552404ec05f0e6d66904ef70284383f52894ed3a5a3a3c0dd0",
+      "bytes": 189099
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-030.png",
+      "sha256": "6c4700745b8a8fdefc35cba94f31433a76f6848956ab9b2cfd36e57c6cd981bb",
+      "bytes": 188947
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-020.png",
+      "sha256": "9a8bb4de5290afc0d307406f279d423ac174e46d4de5fe664943841e88a6f96e",
+      "bytes": 188767
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer-010.png",
+      "sha256": "cd3667c8cd9e087b86b17bbc47ca88e76966e143cc27b4619ae2d35c07b87d33",
+      "bytes": 188657
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+010.png",
+      "sha256": "656894ab1fc95e3b006270b6b1fd594213c4a4a58b2f10573e3463b03926fabe",
+      "bytes": 188606
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+020.png",
+      "sha256": "72fd42d33fba07bc30a1d3344fa03d68133679b13591c6c9b278b63ac69e17f2",
+      "bytes": 188829
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+030.png",
+      "sha256": "ec2aaa14de98f1d6911422779eeb224841b88c1d65d209d7146f81f2e5df8c0b",
+      "bytes": 189015
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+040.png",
+      "sha256": "2e19bf6c4d692917c8c182a13acdf9127d31258fecc279f2a4c5827825e26c89",
+      "bytes": 189152
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+050.png",
+      "sha256": "cf092d290d5bff8d5bb4c04234c5415b6777dbf368a50ed78dc17566d291216d",
+      "bytes": 189273
+    },
+    {
+      "file": "GT4_BMW_0003-source-steer+060.png",
+      "sha256": "cff530f6f3c2953bd3805acbe7896bcf0397d5a6d0bc5cabaa5193f83b57788a",
+      "bytes": 189268
+    }
+  ],
+  "pixels_per_metre": 107.35859393216106,
+  "native_origin_pixel": [
+    256,
+    246.3903105269115
+  ],
+  "calibration": "Square orthographic image uses saved ortho_scale and model-bounds-centred camera. Centre inference is checked against projected source mirror/front/rear alpha extents; no alpha-fit/stretch. Actual13PNG dimensions512x512 supersede metadata experiment.frame_pixels256.",
+  "steering": "Baked wheel poses nearest10degrees, bakeangle=-actual simulation rack angle; no additional wheel overlays.",
+  "glb_sha256": "30be6a5dfcfd40e91e597dfa4880df510b383ccfadefe309c4966f0522abc088",
+  "glb_original_identity": {
+    "file": "bmw_0003/car/menu/bmw_0003",
+    "sha256": "183c4ab90b650d167ff020e309c8a196f562cca5abde220843d29fc843c339da",
+    "spec_label": "m3_gtr_alms_01"
+  }
+}

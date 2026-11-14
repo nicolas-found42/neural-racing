@@ -1,0 +1,458 @@
+[
+  {
+    "id": "monza-map-page",
+    "path": "screenshots/monza-map.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-17e74680-6df2-445a-b851-e6d9d2fb1087.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "22732fc7ce090600bf058d1ee02129c3cd23a87f0feac4158e16f8d7945d01a3",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-01",
+    "path": "images/monza-map-01.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2022/02/21gtwc_monza_invio3_00002.jpg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "342da1a3fc5ac3087d8d45f78fcce807a0099c78240a920562b0416e981c883d",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-02",
+    "path": "images/monza-map-02.png",
+    "url": "https://www.monzanet.it/wp-content/uploads/2021/07/autodromo-monza-home-static-map-alboreto.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "1420888576cbcf2bf616e6663365a8083d2f24b2c2efd24c16339d63881f6bfa",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-03",
+    "path": "images/monza-map-03.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2021/08/Monza_Percorsi_Reali.jpg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "1af173ba80a10bceccc5e6ec1571d4b548fc6e93cd69e08b696942382af608d4",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-04",
+    "path": "images/monza-map-04.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2021/07/autodromo-aerial-photo.jpg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "607ba26fb452692d0bf076177dac32eec90e4f87055699127177c173e68fafd0",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-05",
+    "path": "images/monza-map-05.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2022/02/21gtwc_monza_invio6_00050-1.jpeg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "cb0b5d22bb5a193d82ed0a04a4e4eefc789cdcd3984e3debae53f816e71fb481",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-06",
+    "path": "images/monza-map-06.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2022/02/cc-Foto-Peroni-1.jpeg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "6c2434f20813d5ea8a3d20d8291fafbf6150054399ee93bb55611045b5466d1b",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-07",
+    "path": "images/monza-map-07.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2022/02/2021_wec_invio4_36-1.jpg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "52d8f8b10407e46878b794141fa43ac50099b8d9b003431e19b7b98c3f27b07b",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-08",
+    "path": "images/monza-map-08.jpg",
+    "url": "https://www.monzanet.it/wp-content/uploads/2022/02/2021_F1_GP_f1_386-1.jpeg",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "sha256": "f2ca9e4298e796dafed296ba26c2017099cb4f0b738055b24ea42a0f74d87a0e",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-page",
+    "path": "screenshots/silverstone.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-65f35b15-6713-41bb-86a9-b7181bd968a9.png",
+    "source": "https://www.formula1.com/en/information/great-britain-silverstone-circuit.2DtFVI1FjkYgLVdGhbAIv0",
+    "sha256": "3be925fa66c956555771aa8aabe3a1ae93d409792474739e833bdb8a91376ab7",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-01",
+    "path": "images/silverstone-01.webp",
+    "url": "https://media.formula1.com/image/upload/c_lfill,w_3392/q_auto/v1740000001/content/dam/fom-website/2018-redesign-assets/Racehub%20header%20images%2016x9/Great%20Britain.webp",
+    "source": "https://www.formula1.com/en/information/great-britain-silverstone-circuit.2DtFVI1FjkYgLVdGhbAIv0",
+    "sha256": "4ef66257405771ad01fb396a6f52fef318d33df1429b0876aebb1a688d0290de",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-02",
+    "path": "images/silverstone-02.webp",
+    "url": "https://media.formula1.com/image/upload/c_lfill,w_3392/q_auto/v1740000001/content/dam/fom-website/2018-redesign-assets/Circuit%20maps%2016x9/Great_Britain_Circuit.webp",
+    "source": "https://www.formula1.com/en/information/great-britain-silverstone-circuit.2DtFVI1FjkYgLVdGhbAIv0",
+    "sha256": "6f3b2e0b7ee6884f33ebd598e10dc172f25c3139b76dcb7311d93023c3305919",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "red-bull-ring-page",
+    "path": "screenshots/red-bull-ring.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-cf6a247d-9e6d-4b62-93b2-ea3560641cfe.png",
+    "source": "https://www.redbullring.com/en/experiences/tracks/",
+    "sha256": "3c6464717ba5cdda6662d70b53db26d946702988af1b58846a4b28d26005a321",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-map-page",
+    "path": "screenshots/ring-map.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-5c1d8b41-45c9-4891-aa12-0b6fae855b47.png",
+    "source": "https://www.redbullring.com/en/track/red-bull-ring-f1-motogp-track/",
+    "sha256": "b5e7ec2d537da957f246dc3c1b27701b47bfcdc054220ae3cae8f7a96f7b0906",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-map-01",
+    "path": "images/ring-map-01.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/48872/SPG2026_0007_RBRing_Gelaende_Uebersichtsplan_Luftbild_F1_Kurs_EN_260709-1440x9999.jpg",
+    "source": "https://www.redbullring.com/en/track/red-bull-ring-f1-motogp-track/",
+    "sha256": "117a1bf148e20c323d7d52d94fedc65b9996ee35c0dc7ba2f760fe03aed8d5d4",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-page",
+    "path": "screenshots/car.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-8df7bb41-3875-41dc-806b-590068f65841.png",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "6b38b180a09fd7eefadc687b9acbf38efc9d179aaaa8f1e0bb513c4c6e9358e3",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-01",
+    "path": "images/car-01.jpg",
+    "url": "https://www.bmw-m.com/content/dam/bmw/marketBMW_M/www_bmw-m_com/fastlane/motorsport/M4-GT3-EVO/2025/bmw-m4-gt3-evo-hd-04-2.jpg",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "8a468cf07e2fd2a9912444e45ac619eb024b162c83200e9b402c2c82b736eb19",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-02",
+    "path": "images/car-02.jpg",
+    "url": "https://www.bmw-m.com/content/dam/bmw/marketBMW_M/www_bmw-m_com/fastlane/motorsport/M4-GT3-EVO/bmw-m4-gt3-evo-hd-09.jpg",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "725c091f417ff91c200e2f175894b6757b20695db8880f305eceb24bbfc85b19",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-03",
+    "path": "images/car-03.jpg",
+    "url": "https://www.bmw-m.com/content/dam/bmw/marketBMW_M/www_bmw-m_com/fastlane/motorsport/M4-GT3-EVO/2025/bmw-m4-gt3-evo-hd-08-2.jpg",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "30f0494076cd961761f5161bcabc53b80c99d79d703db3fd10b98751b57262d9",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-04",
+    "path": "images/car-04.jpg",
+    "url": "https://www.bmw-m.com/content/dam/bmw/marketBMW_M/www_bmw-m_com/fastlane/motorsport/M4-GT3-EVO/bmw-m4-gt3-evo-hd-10.jpg",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "261ede0a82cb5c773a7887b1dbae0e78a49adf087fa2f3f1a958bc9ca42cfe53",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "car-05",
+    "path": "images/car-05.jpg",
+    "url": "https://www.bmw-m.com/content/dam/bmw/marketBMW_M/www_bmw-m_com/fastlane/motorsport/M4-GT3-EVO/2025/bmw-m4-gt3-evo-hd-07-2.jpg",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "sha256": "cd6d5beeedec597f89ea95bd644a616a2fb96be6ef922d78c4a62fc5b8d3aada",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-page",
+    "path": "screenshots/silverstone-gallery.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-56d5c873-8dd4-450e-8b0c-3aac40ac13a2.png",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "2d5fccf9f2924f58649fea420fc022fe761269a2b050c8cde2e45f773d6edb01",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-01",
+    "path": "images/silverstone-gallery-01.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2FGrid-PZ7_5812.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "be9bdf96f9577278c41f11064f0dca77085cb29bb38558ac32f415812d54987f",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-02",
+    "path": "images/silverstone-gallery-02.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2F7-2MDH4418.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "5116274d0cb9f757df3d6d39ca51cb701224cb93b6ad576ac572f8392f899709",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-03",
+    "path": "images/silverstone-gallery-03.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2F71-2MDH4428.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "84c357ad8da6be3632c0b6b88082aee7c80a2d6d070aa4f5c470cadc2ce0bfa2",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-04",
+    "path": "images/silverstone-gallery-04.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2F67-2MDH4433.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "3b950695e46cb951d9313076d7117d169b04095cc815bb15a140364001574690",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-05",
+    "path": "images/silverstone-gallery-05.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2F78-DD218493.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "ec47964cb81f83bb2b01130dfe04dd5d3e7e1ad0d14d13a735fac98360c53986",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-gallery-06",
+    "path": "images/silverstone-gallery-06.jpg",
+    "url": "https://www.britishgt.com/timthumb.php?w=1000&src=%2Fimages%2Fgallery%2F2025%2F99%2F%2F42-DD218503.jpg",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "sha256": "66e26978421351e0aab0a0d338c23c58899042fab1fe0057922457152dc92d9c",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-gallery-page",
+    "path": "screenshots/ring-gallery.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-c64c665b-9bab-48f5-9d28-dd08c09cf4ee.png",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "863f14800f8c43edc8111a0546797ca1174106fed69ecf89ae310968822ae05c",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-gallery-01",
+    "path": "images/ring-gallery-01.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/47499/DTM-Service-Road-Tour_2026_LP-scaled-1440x9999.jpg",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "20c53210305fd6f05ffdbb95bb9356c0d574ed97f341be3a97b4d55696fb05c4",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "silverstone-width-page",
+    "path": "screenshots/silverstone-width.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-6fce18b9-277b-4480-b5d3-703d10c5442b.png",
+    "source": "https://motogp.tech3racing.fr/index.php/pages-gp/grand-prix-of-united-kingdom",
+    "sha256": "1dbcb61234917ac874912426560d254ce2dc9504d7b9c74f16367386df173889",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-width-page",
+    "path": "screenshots/ring-width.png",
+    "url": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-adcdcd94-68df-492f-ac66-4125ffcbd261.png",
+    "source": "https://www.puresport.net/us/red-bull-ring-race-track",
+    "sha256": "1f38fc6e290ddc7dd8826ec64b2b9b305471168dd414b778e8eb7d18f8cbe151",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-racing-01",
+    "path": "images/ring-racing-01.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/47423/LP_260425_DTM_0104-scaled-500x9999.jpg",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "5165516b629a7fc6a3ae2087a053872b5ce19d0ebd8b1aa0db2406abe8e45fd2",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-racing-02",
+    "path": "images/ring-racing-02.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/47437/MJ_260425_DTM_0098-1-scaled-960x0.jpg",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "005894b93e0774078b6f469946af3a6f193554566a292979cfe5d676fbdd86e6",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-racing-03",
+    "path": "images/ring-racing-03.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/47351/MJ_260424_DTM_0014-scaled-960x0.jpg",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "d0117be0dab26c3815e4452ce1e8c4e05ebeed726182b2949e798b9efbf186cb",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "ring-racing-04",
+    "path": "images/ring-racing-04.jpg",
+    "url": "https://www.redbullring.com/en/wp-content/uploads/sites/1/fly-images/47462/LP_260426_DTM_0043-scaled-2880x9999.jpg",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "sha256": "052cbb5308bfe32fcb2d076bdae20338054de2505d0419c802b0e04443cb467c",
+    "captured": "2026-11-04"
+  },
+  {
+    "id": "monza-map-dimensions-map",
+    "path": "screenshots/monza-map-dimensions-map.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "derived_from": "screenshots/monza-map.png",
+    "crop": [
+      0,
+      0,
+      1440,
+      1250
+    ],
+    "captured": "2026-11-04",
+    "sha256": "16d2b0e12582c345bb1411aff74515ffcb1c183bb398e49e61003caddbe86dba"
+  },
+  {
+    "id": "monza-map-first-chicane",
+    "path": "screenshots/monza-map-first-chicane.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "derived_from": "screenshots/monza-map.png",
+    "crop": [
+      0,
+      1250,
+      1440,
+      2600
+    ],
+    "captured": "2026-11-04",
+    "sha256": "0096fea0ef7452f5798a23a3b1839363e98404ce28dd86831c3b81d7043d1442"
+  },
+  {
+    "id": "monza-map-gt-corner",
+    "path": "screenshots/monza-map-gt-corner.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "derived_from": "screenshots/monza-map.png",
+    "crop": [
+      0,
+      3200,
+      1440,
+      4700
+    ],
+    "captured": "2026-11-04",
+    "sha256": "19c1648be15ea5beb3db507ef2b5febdf3d13a1dfb8d09f32dd4fa348360631a"
+  },
+  {
+    "id": "monza-map-straight-cars",
+    "path": "screenshots/monza-map-straight-cars.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "derived_from": "screenshots/monza-map.png",
+    "crop": [
+      0,
+      5000,
+      1440,
+      6500
+    ],
+    "captured": "2026-11-04",
+    "sha256": "1d9b65c89944503f5a368ffe04f33754e60c9e591ed50cf2256ec04511db29b3"
+  },
+  {
+    "id": "monza-map-layout",
+    "path": "screenshots/monza-map-layout.png",
+    "source": "https://www.monzanet.it/en/circuit/",
+    "derived_from": "screenshots/monza-map.png",
+    "crop": [
+      0,
+      8950,
+      1440,
+      10300
+    ],
+    "captured": "2026-11-04",
+    "sha256": "757e01ebbbba6cf73c5b8968bcfde535d95f9276253e35af916100ec29ff16d0"
+  },
+  {
+    "id": "silverstone-gallery-race-gallery",
+    "path": "screenshots/silverstone-gallery-race-gallery.png",
+    "source": "https://www.britishgt.com/gallery?filter_season_id=12&filter_meeting_id=99&filter_race_id=671",
+    "derived_from": "screenshots/silverstone-gallery.png",
+    "crop": [
+      0,
+      0,
+      1440,
+      1400
+    ],
+    "captured": "2026-11-04",
+    "sha256": "5064d8cea21b4b0d05f936d564c6a34b0c554150eb91572a6cf20146981909e0"
+  },
+  {
+    "id": "silverstone-width-dimensions-aerial",
+    "path": "screenshots/silverstone-width-dimensions-aerial.png",
+    "source": "https://motogp.tech3racing.fr/index.php/pages-gp/grand-prix-of-united-kingdom",
+    "derived_from": "screenshots/silverstone-width.png",
+    "crop": [
+      0,
+      0,
+      1440,
+      1400
+    ],
+    "captured": "2026-11-04",
+    "sha256": "bc4bba1a0fc480ee38a0309289db4f014a6f772f641258d2ab6e8953cb251289"
+  },
+  {
+    "id": "ring-map-motogp-comparison",
+    "path": "screenshots/ring-map-motogp-comparison.png",
+    "source": "https://www.redbullring.com/en/track/red-bull-ring-f1-motogp-track/",
+    "derived_from": "screenshots/ring-map.png",
+    "crop": [
+      0,
+      1750,
+      1440,
+      2850
+    ],
+    "captured": "2026-11-04",
+    "sha256": "d55be29ab1c539122d4a4a82675e89ca660b95b3e03a4f461a92429c8cf9d04c"
+  },
+  {
+    "id": "ring-gallery-turn-one-cars",
+    "path": "screenshots/ring-gallery-turn-one-cars.png",
+    "source": "https://www.redbullring.com/en/news/dtm-the-best-moments-from-the-red-bull-ring/",
+    "derived_from": "screenshots/ring-gallery.png",
+    "crop": [
+      0,
+      0,
+      1440,
+      1100
+    ],
+    "captured": "2026-11-04",
+    "sha256": "693480a910701bfdfc59ddc756d6de644731c6c04098985eb713d0d7c3c9ef1a"
+  },
+  {
+    "id": "ring-width-cars-dimensions",
+    "path": "screenshots/ring-width-cars-dimensions.png",
+    "source": "https://www.puresport.net/us/red-bull-ring-race-track",
+    "derived_from": "screenshots/ring-width.png",
+    "crop": [
+      0,
+      0,
+      1440,
+      1800
+    ],
+    "captured": "2026-11-04",
+    "sha256": "1a35a7e97841961995ae0c38ced7f61055859378749ee0d51be457a289728451"
+  },
+  {
+    "id": "red-bull-ring-aerial-map",
+    "path": "screenshots/red-bull-ring-aerial-map.png",
+    "source": "https://www.redbullring.com/en/experiences/tracks/",
+    "derived_from": "screenshots/red-bull-ring.png",
+    "crop": [
+      0,
+      2300,
+      1440,
+      3500
+    ],
+    "captured": "2026-11-04",
+    "sha256": "130a140cd46c159abb3c048ac9833008c6c077503cfe153e0e89558429e61854"
+  },
+  {
+    "id": "car-dimensions",
+    "path": "screenshots/car-dimensions.png",
+    "source": "https://www.bmw-m.com/en/fastlane/motorsport/race-cars/bmw-m4-gt3-evo.html",
+    "derived_from": "screenshots/car.png",
+    "crop": [
+      0,
+      11980,
+      1440,
+      12620
+    ],
+    "captured": "2026-11-04",
+    "sha256": "879975b0d48480d8302b299b82948c16752bbb0a3bc9e873a400852be0c47fac"
+  }
+]

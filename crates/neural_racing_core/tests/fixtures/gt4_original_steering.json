@@ -1,0 +1,1521 @@
+{
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "authority": "controlled-original-opcode-execution-on-upstream-Play-EE",
+  "emulator": {
+    "repository": "https://github.com/jpd002/Play-",
+    "commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+    "architecture": "native arm64 JIT",
+    "rounding": "FE_TOWARDZERO + FTZ; accurate ADD/SUB compile hints on all text blocks",
+    "binary_sha256": "de7d90a22f9f808e143a6cccfc018445c008e714a9d8f4e6c01f11d5d5c528d7"
+  },
+  "limitations": [
+    "Emulator behavior, not physical PS2 hardware measurements.",
+    "No full game boot or recovered production race-state fixture; controlled numeric routine inputs.",
+    "EE+COP1+COP2 macro engine configured; asynchronous VU microprogram/device integration not part of this direct runner.",
+    "No original instruction patches or callee stubs; SDK memset executes original code for wrappers."
+  ],
+  "cases": [
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3c0efa34",
+        "3f060a91"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3aed86",
+        "3f860a91"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 0,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3c047e0b",
+        "3ef86c55"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3aed86",
+        "3f860a91"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 20,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3b3ea2f0",
+        "3e32b8c1"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3aed86",
+        "3f860a91"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": false,
+      "speed": 100,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3c360b61",
+        "3f2aaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3a4fa5",
+        "3f8aaaa8"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 0,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3c360b61",
+        "3f2aaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3a4fa5",
+        "3f8aaaa8"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 20,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3b3ea2f0",
+        "3e32b8c1"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e49abce",
+        "be3bbbba"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be3a4fa5",
+        "3f8aaaa8"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e9258c0",
+        "bf599998"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be948d16",
+        "3f177777"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 0,
+      "analog": true,
+      "speed": 100,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 0,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 20,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": false,
+      "speed": 100,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 0,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 20,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": 0,
+      "target": 0.4,
+      "heading": 0,
+      "rate": 0,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3bb60b61",
+        "3eaaaaab"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": 0.2,
+      "target": 0,
+      "heading": 0.1,
+      "rate": 0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e4d2b76",
+        "3cb17e60"
+      ],
+      "ieee_control_bits": [
+        "3e4d2b77",
+        "3cb17e40"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": -0.2,
+      "target": 0.4,
+      "heading": 0.1,
+      "rate": -0.1,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be428814",
+        "3f1a06d2"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": 0.3,
+      "target": -0.2,
+      "heading": -0.4,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3e95ea9d",
+        "bedd0368"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": -0.3,
+      "target": -0.1,
+      "heading": -0.4,
+      "rate": 0.2,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "be94d5e7",
+        "3f0eeeef"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": 0.1,
+      "target": 0.1,
+      "heading": 0.3,
+      "rate": 0.5,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_response",
+      "group": 1,
+      "analog": true,
+      "speed": 100,
+      "current": 0.001,
+      "target": 0,
+      "heading": 0,
+      "rate": -0.3,
+      "dt": 0.016666666666666666,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": 0,
+      "target": 1,
+      "step": 0.1,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3dcccccd"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": 1,
+      "target": 0,
+      "step": 0.1,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3f666667"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": 0.99,
+      "target": 1,
+      "step": 0.1,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3f800000"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": 0.01,
+      "target": 0,
+      "step": 0.1,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": 1,
+      "target": 1,
+      "step": 0.1,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "3f800000"
+      ]
+    },
+    {
+      "kind": "steering_approach",
+      "current": -1,
+      "target": 1,
+      "step": 0.2,
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "bf4ccccd"
+      ]
+    },
+    {
+      "kind": "steering_table",
+      "xs": [
+        0,
+        20,
+        50,
+        100,
+        150,
+        250
+      ],
+      "ys": [
+        200,
+        100,
+        70,
+        40,
+        25,
+        15
+      ],
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "40b1c71b",
+        "415e38e2",
+        "41de38e2",
+        "4226aaaa",
+        "428ae38d",
+        "3f32b8bf",
+        "3eb2b8bf",
+        "3e7a35d9",
+        "3e0efa33",
+        "3db2b8bf",
+        "3d56774c"
+      ]
+    },
+    {
+      "kind": "steering_table",
+      "xs": [
+        0,
+        30,
+        60,
+        90,
+        120,
+        200
+      ],
+      "ys": [
+        100,
+        90,
+        80,
+        70,
+        60,
+        50
+      ],
+      "stopping_pc": "01fff000",
+      "output_bits": [
+        "00000000",
+        "41055554",
+        "41855554",
+        "41c7ffff",
+        "42055554",
+        "425e38e2",
+        "3eb2b8bf",
+        "3ea0d979",
+        "3e8efa33",
+        "3e7a35d9",
+        "3e56774c",
+        "3e32b8bf"
+      ]
+    }
+  ],
+  "steering_rate_cancellation": {
+    "maximum_measured_absolute_error": 5.960464477539063e-08,
+    "absolute_allowance": 1e-06,
+    "applies_only": "rate output of six cases with bit-exact original-opcode IEEE sensitivity controls",
+    "original_control_mode": "original instructions on Play with IEEE-nearest sensitivity configuration; not physical EE rounding"
+  }
+}

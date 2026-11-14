@@ -4,3 +4,5 @@
 .audit/
 transcript.txt
 /models/best.bin
+
+/scripts/__pycache__/

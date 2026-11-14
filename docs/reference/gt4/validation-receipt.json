@@ -1,0 +1,130 @@
+{
+  "date": "2026-11-04",
+  "authority": "controlled-original-opcode-execution-on-upstream-Play-EE",
+  "target_sha256": "e0db8fec04eec28594c9d6946567d0bd7c6b1b50177427204e054fa34fcf7804",
+  "emulator": {
+    "repository": "https://github.com/jpd002/Play-",
+    "commit": "1f27232772e484bfb79364b751b84f41f4c87481",
+    "float_mode": "FE_TOWARDZERO + FTZ; accurate ADD/SUB compile hints on all text blocks"
+  },
+  "main_audit": {
+    "groups": 2319,
+    "passed": 2319,
+    "failed": 0,
+    "source_snapshot": "/Users/nicolas/Documents/github/neural-games/car/.audit/gt4-port/differential/port-source-3a5phit1/gt4",
+    "source_hashes": {
+      "crates/neural_racing_core/src/gt4/native.rs": "e48fa58621ab9f65837253361cb3402e4ab673e47797848c0775ba3e44a272a6",
+      "crates/neural_racing_core/src/gt4/attitude.rs": "eb226277315cc5b42f684c59c01ca16533628289004fb06891142e2d296dcf69",
+      "crates/neural_racing_core/src/gt4/suspension.rs": "80c576bcbfb8911f6465eee4021835acec34c821848d16112a4a0080a8f3f40c",
+      "crates/neural_racing_core/src/gt4/runtime.rs": "d4d46dfd6a0ae0489546f0896fa666a03da6102842aeed570fae887875ed0c10",
+      "crates/neural_racing_core/src/gt4/contact_finish.rs": "9c3526d972c20e36c42175aa8e0b96487b4e3f357c52b081f7e5a71c491a22a7",
+      "crates/neural_racing_core/src/gt4/aids.rs": "ee207a4414955ec73cac5ccd9b22d7f882c78efeabc37aadd3f4de1e3d9b4275",
+      "crates/neural_racing_core/src/gt4/automatic.rs": "4b2a888cf0c9a0f40d572f25e2de0b093b9f83f9f7f7d5263aaa630c26a69408",
+      "crates/neural_racing_core/src/gt4/normal.rs": "d3b00d6ab92aa58e5cb708bfa1d3f9f79c7dff5ffd0b0276d3be71d42464ba35",
+      "crates/neural_racing_core/src/gt4/steering.rs": "74e0482aa0ff771581f954ab3bf8ae8e41a48116e6118517a5b91c896be6b058",
+      "crates/neural_racing_core/src/gt4/slip.rs": "dfc7953e4a93a7f67c630406b614aa214320a43875889e1347d114a24cf16716",
+      "crates/neural_racing_core/src/gt4/control.rs": "cd3a57ed61689c82138de86f0063af0951c067dbf96d3143e566a1c65656aef0",
+      "crates/neural_racing_core/src/gt4/SOURCE_IDENTITIES.json": "499e2b70ef43f0cb975e759334dc82f67d37f18bed58a3839dd5fb31f5acf52c",
+      "crates/neural_racing_core/src/gt4/body.rs": "d3bcb5f061219948d1d78d374d5726d8b57f2d9a9c9480944aa2173cda77bed8",
+      "crates/neural_racing_core/src/gt4/kinematics.rs": "9617a865f6f43c25cbf3b6eb8fa5800ea12492710a829ca7db86c52cbc604e42",
+      "crates/neural_racing_core/src/gt4/PORT_LEDGER.md": "fcea6b808248e94dce518bad2998963e7b8ca3cfe9bcc6b07833daa65c7481d9",
+      "crates/neural_racing_core/src/gt4/eefloat.rs": "6959e73abc4de765c034f0c5b0e64ba1b7bebda5e7538994d9efebb456f837d6",
+      "crates/neural_racing_core/src/gt4/test_support.rs": "df1e6827b522ebbd6d821692918dcf0d4eac9c1ec08aee7ae0a47f50db0b19b6",
+      "crates/neural_racing_core/src/gt4/mod.rs": "c02bb5172bc06ffe9f29fe1bd290c3b8b331be37a2766725372e699bbe88e534",
+      "crates/neural_racing_core/src/gt4/calibration.rs": "0464b59d587ad6773d422a4f74ea192788321eed63ac61a414e2fbdbf0dcffed",
+      "crates/neural_racing_core/src/gt4/preparation.rs": "cf6c16658f77faaf247da233be826e6150945bdd1e6fc81c5ffc116f06e1075a",
+      "crates/neural_racing_core/src/gt4/chassis.rs": "4cfd3f43f3c6893c25de80df7d1903b9d834e2edd97f69e16ebac2395837958a",
+      "crates/neural_racing_core/src/gt4/math.rs": "cfb0f3bc47063cb54a2b13047786e9203162dfbe9e1158bdb1b2090ce46b39ba",
+      "crates/neural_racing_core/src/gt4/tire.rs": "8c7cb91550cd892ca63a8c9f1f1a45c34eb328c276697ab0682c042470cf714d",
+      "crates/neural_racing_core/src/gt4/brake_heat.rs": "21fa418e79a0ed6ba555377a83a10143c09aba8f2e4cf8d85902cf420b8aa98d",
+      "crates/neural_racing_core/src/gt4/steering_frame.rs": "6ba984acf7545bf6c33daecfd521799a8a4616695de251b4b49fa883b65d0dbf",
+      "crates/neural_racing_core/src/gt4/parameters.rs": "dd424991d442c3f1e80c56a75e47c67cf393c7f461c85987a0c21930bc74b0ca",
+      "crates/neural_racing_core/src/gt4/drivetrain.rs": "23e22f956398abedab4a45110a71736bd9875ea35a04838fc09c740bcf895932",
+      "crates/neural_racing_core/src/gt4/curve.rs": "ebecfcd8cc26dc8b23fb70dd1094fc3fca9b74f061ae6455aaf390feea2fed88",
+      "crates/neural_racing_core/src/gt4/engine.rs": "a77ae9f5565fb3bb6e05f02b3828ba35786323c0b1273145acc8169e513b2f63",
+      "crates/neural_racing_core/src/gt4/conductor.rs": "0cf1880055a1688be3cf78cf29880c63b3d031b361b09923a22fee91246142ce",
+      "crates/neural_racing_core/src/gt4/data/global_parameters.bin": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a",
+      "crates/neural_racing_core/src/gt4/data/README.md": "2acfdc5c424141ccf13600170fc0bd9be010e426ff09d2aa088780b0d589b1d2",
+      "crates/neural_racing_core/src/gt4/data/steering_globals.bin": "e2fb876a7a1256d1734d3ba31a68ae878564de42f9c9f1daec825ee61cd662de",
+      "crates/neural_racing_core/src/gt4/data/m3_gtr_alms_01.bin": "572905793b61abb6a71810c4bc2e021520796d1686418fe25645befe1cac278e",
+      "crates/neural_racing_core/src/gt4/data/steering_response_globals.bin": "28759d691b70d91da61673f08bdf0df9116e94ea80aca3177271a6c4ac8f8bb6"
+    },
+    "comparison_policy": {
+      "float": "<=12 ULP for arithmetic results; <=8 ULP initializer",
+      "flags": "exact signed bytes",
+      "whole_frame_forward_error": "Only two exact input/profile-bound cases use source-derived per-instruction forward-error bounds at yaw offsets680/68c/740/744; see docs/reference/gt4/yaw-forward-error.json. All other whole-frame fields stay12ULP/exact flags.",
+      "demonstrated_cancellation_exception": "<=1e-6 absolute only car68c chassis yaw acceleration, car654 longitudinal increment, steering response rate; original-opcode IEEE sensitivity reproduces Rust exactly. All other outputs retain ULP gate.",
+      "meaning": "semantic/numerical regression against bounded original opcode execution, not bit-exact R5900 hardware proof"
+    },
+    "raw_maximum_ulp_distance": 872415232,
+    "raw_maximum_note": "Raw ULP distances include documented cancellation comparisons; this number is not the ULP acceptance threshold.",
+    "local_report": ".audit/gt4-port/differential/comparison.json",
+    "report_sha256": "ddd1179b785d1726f66a400dfcd1b2682fd04fef16078f1cbf494212edce0d36"
+  },
+  "complete_physical_post_pipeline": {
+    "cases": 21,
+    "outputs_per_case": 232,
+    "passed": 21,
+    "maximum_observed_ulp": 8,
+    "policy": {
+      "floating": "<=12 ULP for every selected physical output; no absolute exception",
+      "flags_and_integer_mileage": "exact",
+      "maximum_observed_ulp": 8
+    },
+    "fixture": "crates/neural_racing_core/tests/fixtures/gt4_original_post_pipeline.json",
+    "fixture_sha256": "3b352bd0c810b2185047b7b8be604d386482e596a9c107f7a0d776c93ce582c7",
+    "original_chain": [
+      "45c5a8 prefix: stop before45c898 after delayed final pose store",
+      "45c9f8",
+      "verified proxy-to-car bit copies",
+      "36a490",
+      "36a758",
+      "36b0c8",
+      "36ba88",
+      "36cee8",
+      "367148",
+      "350080",
+      "366718",
+      "345658",
+      "345a20",
+      "36c9f8",
+      "35d350",
+      "35de20",
+      "344040"
+    ]
+  },
+  "full_contact_projection_and_finish": {
+    "cases": 24,
+    "policy": "12 ULP arithmetic; exact flags; no new exceptions",
+    "fixture": "crates/neural_racing_core/tests/fixtures/gt4_original_contact_finish.json",
+    "fixture_sha256": "f3404d12ea17982227968bff52b348b90b26aabb6de41dd1d3d2a0336fc81bc4",
+    "runner_sha256": "6b5bef83b7fb90dfa42063cc5b8d1d83582060fb0431db6dadfa34c5bd8f8c53",
+    "input_sha256": "0c7a173386ffcf35c549ea215414ba038a8a4e037c582909c5e0b91a55fffb04",
+    "execution_owner": "rea_ps2_support; portable test passed as independently reported"
+  },
+  "parameters": {
+    "global_parameters.bin": {
+      "bytes": 9472,
+      "sha256": "7e3756b3b5b980f0db9e9348efaa11d2607cad42af60edb2b249359a4da38c6a"
+    },
+    "steering_globals.bin": {
+      "bytes": 32,
+      "sha256": "e2fb876a7a1256d1734d3ba31a68ae878564de42f9c9f1daec825ee61cd662de"
+    },
+    "m3_gtr_alms_01.bin": {
+      "bytes": 4352,
+      "sha256": "572905793b61abb6a71810c4bc2e021520796d1686418fe25645befe1cac278e"
+    },
+    "steering_response_globals.bin": {
+      "bytes": 904,
+      "sha256": "28759d691b70d91da61673f08bdf0df9116e94ea80aca3177271a6c4ac8f8bb6"
+    }
+  },
+  "limitations": [
+    "Upstream Play EE original-code regression evidence, not a physical PS2 hardware bit-exactness claim.",
+    "Controlled flat-road normal-manual M3 context; zeroed runtime/controller context is explicit, not a captured complete retail race.",
+    "Post fixture executes original numeric subchain and free-pose boundary; collision/road queries are external inputs. Unrecovered peripheral-device vtable callback353ee8 is excluded, not stubbed.",
+    "Independent original fixture frames are not an uninterrupted native game trajectory.",
+    "Workspace/application validation is recorded separately by the parent agent."
+  ]
+}

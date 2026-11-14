@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/neural_racing_diagnostics",
     "crates/neural_racing_core",
     "crates/neural_racing_ml",
     "crates/neural_racing_engine",

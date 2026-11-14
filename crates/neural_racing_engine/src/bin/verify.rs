@@ -14,7 +14,8 @@ struct Args {
     quiet: bool,
 }
 
-fn main() {
+fn main() -> std::process::ExitCode {
+    let _diagnostics = neural_racing_diagnostics::init("verify");
     let mut args = Args {
         model: PathBuf::from("models/policy.bin"),
         tracks: 50,
@@ -24,7 +25,10 @@ fn main() {
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
-        let mut value = || iter.next().unwrap_or_else(|| panic!("{flag} needs a value"));
+        let mut value = || {
+            iter.next()
+                .unwrap_or_else(|| panic!("{flag} needs a value"))
+        };
         match flag.as_str() {
             "--model" => args.model = PathBuf::from(value()),
             "--tracks" => args.tracks = value().parse().expect("integer"),
@@ -33,14 +37,35 @@ fn main() {
             "--quiet" => args.quiet = true,
             "--help" | "-h" => {
                 println!("verify [--model PATH] [--tracks N] [--laps N] [--seed N] [--quiet]");
-                return;
+                return std::process::ExitCode::SUCCESS;
             }
             other => panic!("unknown flag {other}"),
         }
     }
 
+    let operation = neural_racing_diagnostics::operation();
+    let _context = neural_racing_diagnostics::context(operation);
+    neural_racing_diagnostics::emit!(
+        "verify_config",
+        operation,
+        neural_racing_diagnostics::json!({"seed":args.seed,"tracks":args.tracks,"laps":args.laps})
+    );
     let policy = Policy::load(&args.model)
         .unwrap_or_else(|error| panic!("load {}: {error}", args.model.display()));
+    if policy.obs_dim != neural_racing_core::OBS_DIM {
+        eprintln!("This policy uses the old observation/physics format. Train a fresh model for the current vehicle dynamics.");
+        neural_racing_diagnostics::emit!(
+            "policy_incompatible",
+            operation,
+            neural_racing_diagnostics::json!({"actual_obs_dim":policy.obs_dim,"expected_obs_dim":neural_racing_core::OBS_DIM})
+        );
+        neural_racing_diagnostics::emit!(
+            "verify_result",
+            operation,
+            neural_racing_diagnostics::json!({"passed":false,"exit_code":2,"reason":"incompatible_observations"})
+        );
+        return std::process::ExitCode::from(2);
+    }
     println!(
         "{} ({} parameters) on {} fresh tracks, {} laps each",
         args.model.display(),
@@ -83,10 +108,21 @@ fn main() {
     );
 
     if report.finished < args.tracks {
-        std::process::exit(1);
+        neural_racing_diagnostics::emit!(
+            "verify_result",
+            operation,
+            neural_racing_diagnostics::json!({"passed":false,"exit_code":1,"finished":report.finished,"tracks":args.tracks})
+        );
+        return std::process::ExitCode::FAILURE;
     }
     println!(
         "PASS: every one of {} unseen random tracks completed {} laps without leaving the road",
         args.tracks, args.laps
     );
+    neural_racing_diagnostics::emit!(
+        "verify_result",
+        operation,
+        neural_racing_diagnostics::json!({"passed":true,"exit_code":0,"tracks":args.tracks})
+    );
+    std::process::ExitCode::SUCCESS
 }
