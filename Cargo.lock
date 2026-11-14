@@ -2030,6 +2030,7 @@ dependencies = [
  "neural_racing_core",
  "neural_racing_diagnostics",
  "neural_racing_ml",
+ "rayon",
 ]
 
 [[package]]

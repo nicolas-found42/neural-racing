@@ -32,11 +32,27 @@ pub(crate) fn product(
     transpose_a: bool,
     transpose_b: bool,
 ) -> Vec<f32> {
+    let mut c = Vec::new();
+    product_into(a, b, m, n, k, transpose_a, transpose_b, &mut c);
+    c
+}
+
+pub(crate) fn product_into(
+    a: &[f32],
+    b: &[f32],
+    m: usize,
+    n: usize,
+    k: usize,
+    transpose_a: bool,
+    transpose_b: bool,
+    c: &mut Vec<f32>,
+) {
     assert_eq!(a.len(), m.checked_mul(k).expect("matrix shape overflow"));
     assert_eq!(b.len(), k.checked_mul(n).expect("matrix shape overflow"));
-    let mut c = vec![0.0; m.checked_mul(n).expect("matrix shape overflow")];
+    c.resize(m.checked_mul(n).expect("matrix shape overflow"), 0.0);
     if m == 0 || n == 0 || k == 0 {
-        return c;
+        c.fill(0.0);
+        return;
     }
     #[cfg(target_os = "macos")]
     {
@@ -68,8 +84,7 @@ pub(crate) fn product(
         }
     }
     #[cfg(not(target_os = "macos"))]
-    reference(a, b, &mut c, m, n, k, transpose_a, transpose_b);
-    c
+    reference(a, b, c, m, n, k, transpose_a, transpose_b);
 }
 
 #[cfg(any(not(target_os = "macos"), test))]

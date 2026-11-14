@@ -7,12 +7,14 @@
 
 use crate::adam::Adam;
 use crate::policy::{
-    gaussian_log_prob, log_std_from_raw, log_std_raw_grad, Policy, Sample, ACTION_DIM,
+    gaussian_log_prob, log_std_from_raw, log_std_raw_grad, squashed_entropy, Policy, Sample,
+    ACTION_DIM,
 };
 use neural_racing_core::Rng;
 
 pub const GAMMA: f64 = 0.999;
-pub const GAE_LAMBDA: f64 = 0.95;
+// Roughly 4.5 seconds of trace decay at 20 Hz, so braking precedes its outcome.
+pub const GAE_LAMBDA: f64 = 0.99;
 pub const LR: f64 = 1e-4;
 pub const CLIP_RANGE: f64 = 0.2;
 pub const VALUE_COEF: f64 = 0.5;
@@ -106,9 +108,10 @@ impl Batch {
             } else {
                 1.0
             };
-            let delta = f64::from(trajectory.rewards[step]) + GAMMA * next_value * alive
+            let delta = f64::from(trajectory.rewards[step])
+                + GAMMA.powi(trajectory.steps[step] as i32) * next_value * alive
                 - f64::from(trajectory.values[step]);
-            gae = delta + GAMMA * GAE_LAMBDA * alive * gae;
+            gae = delta + (GAMMA * GAE_LAMBDA).powi(trajectory.steps[step] as i32) * alive * gae;
             advantages[step] = gae;
         }
         for step in 0..rows {
@@ -134,17 +137,25 @@ pub struct Trajectory {
     pub logp: Vec<f32>,
     pub values: Vec<f32>,
     pub rewards: Vec<f32>,
+    /// Number of environment decisions covered by each sampled control.
+    pub steps: Vec<u32>,
     pub bootstrap: f32,
     pub rows: usize,
 }
 
 impl Trajectory {
     pub fn push(&mut self, obs: &[f32], sample: &Sample, reward: f32) {
+        self.push_held(obs, sample, reward, 1);
+    }
+
+    pub fn push_held(&mut self, obs: &[f32], sample: &Sample, discounted_reward: f32, steps: u32) {
+        assert!(steps > 0);
         self.obs.extend_from_slice(obs);
         self.z.extend_from_slice(&sample.z);
         self.logp.push(sample.logp);
         self.values.push(sample.value);
-        self.rewards.push(reward);
+        self.rewards.push(discounted_reward);
+        self.steps.push(steps);
         self.rows += 1;
     }
 
@@ -154,6 +165,7 @@ impl Trajectory {
         self.logp.clear();
         self.values.clear();
         self.rewards.clear();
+        self.steps.clear();
         self.bootstrap = 0.0;
         self.rows = 0;
     }
@@ -166,7 +178,10 @@ pub struct UpdateStats {
     pub parameter_norm: f64,
     pub policy_kl: f64,
     pub update_scale: f64,
+    /// Differential entropy of the bounded action distribution (per action).
     pub entropy: f64,
+    /// Geometric mean of latent sigma; distinct from actual control entropy.
+    pub exploration_sigma: f64,
     pub value_loss: f64,
     pub explained_variance: f64,
 }
@@ -227,6 +242,7 @@ pub fn update(
     let mut indices: Vec<usize> = (0..rows).collect();
     let mut last_kl = 0.0f64;
     let mut last_entropy = 0.0f64;
+    let mut last_log_std = 0.0f64;
     let mut last_value_loss = 0.0f64;
     let mut gradient_norm = 0.0f64;
     let mut update_scale = 1.0f64;
@@ -264,6 +280,7 @@ pub fn update(
             let mut d_outputs = vec![0f32; count * out_dim];
             let mut kl_sum = 0.0f64;
             let mut entropy_sum = 0.0f64;
+            let mut log_std_sum = 0.0f64;
             let mut value_loss_sum = 0.0f64;
             for (local, &row) in chunk.iter().enumerate() {
                 let mean_slice = &outputs[local * out_dim..local * out_dim + ACTION_DIM];
@@ -300,10 +317,14 @@ pub fn update(
                     let d_dls = diff * diff / (sigma * sigma) - 1.0;
                     let mean_slot = local * out_dim + dim;
                     let log_std_slot = local * out_dim + ACTION_DIM + dim;
-                    d_outputs[mean_slot] = (d_logp * d_dmu) as f32;
+                    let (entropy, entropy_mean, entropy_log_std) =
+                        squashed_entropy(f64::from(mean_slice[dim]), f64::from(log_std));
+                    d_outputs[mean_slot] = (d_logp * d_dmu - ENTROPY_COEF * entropy_mean) as f32;
                     let raw_grad = f64::from(log_std_raw_grad(log_std_slice[dim]));
-                    d_outputs[log_std_slot] = ((d_logp * d_dls - ENTROPY_COEF) * raw_grad) as f32;
-                    entropy_sum += f64::from(log_std);
+                    d_outputs[log_std_slot] =
+                        ((d_logp * d_dls - ENTROPY_COEF * entropy_log_std) * raw_grad) as f32;
+                    entropy_sum += entropy;
+                    log_std_sum += f64::from(log_std);
                 }
                 let ret = f64::from(batch.returns[row]);
                 let delta = f64::from(value) - ret;
@@ -313,6 +334,7 @@ pub fn update(
             }
             last_kl = kl_sum / count as f64;
             last_entropy = entropy_sum / (count * ACTION_DIM) as f64;
+            last_log_std = log_std_sum / (count * ACTION_DIM) as f64;
             last_value_loss = value_loss_sum / count as f64;
             // Stop before the proposal leaves the trust region. The check is
             // per minibatch so one epoch cannot drift past the bound unnoticed.
@@ -386,6 +408,7 @@ pub fn update(
         policy_kl: last_kl.abs(),
         update_scale,
         entropy: last_entropy,
+        exploration_sigma: last_log_std.exp(),
         value_loss: last_value_loss,
         explained_variance,
     })

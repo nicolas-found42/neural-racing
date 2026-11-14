@@ -7,8 +7,8 @@ use neural_racing_core::{
     Action, Env, Rng, Track, CHECKPOINT_COUNT, DEFAULT_LAPS, MAX_STEPS, OBS_DIM,
 };
 use neural_racing_ml::{
-    update, Adam, Batch, Policy, Sample, Trajectory, UpdateStats, DEFAULT_BLOCKS, DEFAULT_WIDTH,
-    LR, MAX_GRAD_NORM,
+    update, Adam, Batch, InferenceWorkspace, Policy, Sample, Trajectory, UpdateStats, CONTROL_HOLD,
+    DEFAULT_BLOCKS, DEFAULT_WIDTH, GAMMA, LR, MAX_GRAD_NORM,
 };
 
 #[derive(Clone, Debug)]
@@ -66,11 +66,21 @@ pub struct Rollout {
     pub batch: Batch,
 }
 
-fn decide(policy: &Policy, obs: &[f32], rng: &mut Rng, explore: bool) -> Sample {
+fn decide(
+    policy: &Policy,
+    obs: &[f32],
+    rng: &mut Rng,
+    explore: bool,
+    workspace: &mut InferenceWorkspace,
+) -> Sample {
+    let outputs = policy.forward_into(obs, 1, workspace);
     if explore {
-        policy.sample(obs, rng)
+        Policy::sample_from_outputs(outputs, rng)
     } else {
-        let action = policy.mean_action(obs);
+        let action = [
+            f64::from(outputs[0]).tanh() as f32,
+            f64::from(outputs[1]).tanh() as f32,
+        ];
         Sample {
             action,
             z: [0.0; 2],
@@ -78,7 +88,7 @@ fn decide(policy: &Policy, obs: &[f32], rng: &mut Rng, explore: bool) -> Sample 
             log_std: [0.0; 2],
             eps: [0.0; 2],
             logp: 0.0,
-            value: policy.value(obs),
+            value: outputs[4],
         }
     }
 }
@@ -86,7 +96,19 @@ fn decide(policy: &Policy, obs: &[f32], rng: &mut Rng, explore: bool) -> Sample 
 /// Runs one race on `track`, sampling from the policy and recording the rows
 /// the estimator consumes. Finite differences are not involved anywhere.
 pub fn rollout(policy: &Policy, track: Track, laps: i32, rng: &mut Rng) -> Rollout {
-    rollout_inner(policy, track, 0, laps, rng, true)
+    rollout_inner(policy, track, 0, laps, rng, true, 0)
+}
+
+/// A full practice race from a rotated checkpoint sequence, using the same
+/// observations, dynamics, rewards and trajectory estimator as normal rollouts.
+pub fn rollout_at_checkpoint(
+    policy: &Policy,
+    track: Track,
+    laps: i32,
+    checkpoint: usize,
+    rng: &mut Rng,
+) -> Rollout {
+    rollout_inner(policy, track, 0, laps, rng, true, checkpoint)
 }
 
 fn rollout_inner(
@@ -96,8 +118,13 @@ fn rollout_inner(
     laps: i32,
     rng: &mut Rng,
     explore: bool,
+    checkpoint: usize,
 ) -> Rollout {
     let mut env = Env::new(track, laps);
+    if checkpoint != 0 {
+        env.reset_at_checkpoint(checkpoint);
+    }
+    let mut workspace = InferenceWorkspace::default();
     let mut trajectory = Trajectory::default();
     let mut rewards: Vec<f32> = Vec::with_capacity(MAX_STEPS as usize);
     let mut min_wall = f64::INFINITY;
@@ -108,29 +135,34 @@ fn rollout_inner(
     let mut last_lap_step = 0;
     let mut info;
 
-    loop {
-        let sample = decide(policy, &env.obs, rng, explore);
-        trajectory.push(&env.obs, &sample, 0.0);
-        let outcome = env.step(Action {
-            steer: f64::from(sample.action[0]),
-            throttle: f64::from(sample.action[1]),
-        });
-        if let Some(slot) = trajectory.rewards.last_mut() {
-            *slot = outcome.reward as f32;
+    'episode: loop {
+        let obs = env.obs;
+        let sample = decide(policy, &obs, rng, explore, &mut workspace);
+        let mut discounted_reward = 0.0;
+        let mut duration = 0;
+        for held in 0..CONTROL_HOLD {
+            let outcome = env.step(Action {
+                steer: f64::from(sample.action[0]),
+                throttle: f64::from(sample.action[1]),
+            });
+            discounted_reward += GAMMA.powi(held as i32) * outcome.reward;
+            duration += 1;
+            rewards.push(outcome.reward as f32);
+            min_wall = min_wall.min(env.min_ray);
+            speed_sum += env.speed;
+            steps += 1;
+            info = outcome.info;
+            if info.laps_completed > last_laps {
+                lap_steps.push(info.steps - last_lap_step);
+                last_laps = info.laps_completed;
+                last_lap_step = info.steps;
+            }
+            if outcome.done {
+                trajectory.push_held(&obs, &sample, discounted_reward as f32, duration);
+                break 'episode;
+            }
         }
-        rewards.push(outcome.reward as f32);
-        min_wall = min_wall.min(env.min_ray);
-        speed_sum += env.speed;
-        steps += 1;
-        info = outcome.info;
-        if info.laps_completed > last_laps {
-            lap_steps.push(info.steps - last_lap_step);
-            last_laps = info.laps_completed;
-            last_lap_step = info.steps;
-        }
-        if outcome.done {
-            break;
-        }
+        trajectory.push_held(&obs, &sample, discounted_reward as f32, duration);
     }
 
     let mut batch = Batch::new(policy.obs_dim, policy.act_dim);
@@ -157,7 +189,7 @@ fn rollout_inner(
 /// One deterministic race using the mean action; used for evaluation and the UI.
 pub fn deterministic_episode(policy: &Policy, track: Track, laps: i32) -> EpisodeReport {
     let mut rng = Rng::new(0);
-    rollout_inner(policy, track, 0, laps, &mut rng, false).report
+    rollout_inner(policy, track, 0, laps, &mut rng, false, 0).report
 }
 
 #[derive(Clone, Debug)]
@@ -345,17 +377,19 @@ impl Trainer {
                                 1 => Track::random_narrow(track_seed),
                                 _ => Track::random(track_seed),
                             };
-                            rollouts.push(rollout_inner(
+                            let rollout = rollout_inner(
                                 policy,
                                 track,
                                 track_seed,
                                 config.laps,
                                 &mut rng,
                                 true,
-                            ));
-                            let report = &rollouts.last().unwrap().report;
+                                0,
+                            );
+                            let report = &rollout.report;
                             emit!("rollout_finished", op, json!({"worker":worker,"episode":episode,"track_seed":track_seed,
                                 "finished":report.finished(),"off_track":report.off_track,"steps":report.steps,"distance":report.distance}));
+                            rollouts.push(rollout);
                         }
                         rollouts
                     })
@@ -448,6 +482,7 @@ pub fn gates_per_lap() -> i32 {
 }
 
 /// Incremental, in-memory learning used by the live desktop session.
+pub mod curriculum;
 pub mod live;
 
 pub mod diagnostics;

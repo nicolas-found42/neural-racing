@@ -10,19 +10,22 @@
 use neural_racing_core::Rng;
 
 pub const LEAKY_SLOPE: f32 = 0.05;
-/// Width and depth of the shipped racing brain. 349,749 parameters with the
-/// 67-value observation and two actions.
+/// Width and depth of the racing brain; the input size follows the core observation.
 pub const DEFAULT_WIDTH: usize = 256;
 pub const DEFAULT_BLOCKS: usize = 5;
 /// The policy is always steer and throttle plus brake.
 pub const ACTION_DIM: usize = 2;
+/// Neural controls are held for four 20 Hz environment decisions (200 ms).
+pub const CONTROL_HOLD: u32 = 4;
 /// Exploration standard deviation is bounded so the policy can neither freeze
 /// nor random-walk. These are log-space bounds (0.15 and 0.6).
 pub const LOG_STD_MIN: f32 = -1.897_120_0;
 pub const LOG_STD_MAX: f32 = -0.510_825_6;
 
 const MAGIC: &[u8; 8] = b"NRPOLCY\0";
-const VERSION: u32 = 2;
+// Version 4 adds the 200 ms control cadence to the GT4 M3 contract.
+// Earlier policies use different dynamics or a 50 ms control cadence.
+const VERSION: u32 = 4;
 const NORM_EPSILON: f64 = 1e-5;
 
 /// One sampled control decision and everything the estimator needs to train it.
@@ -45,6 +48,32 @@ pub fn gaussian_log_prob(z: f32, mean: f32, log_std: f32) -> f32 {
     -0.5 * diff * diff - log_std - 0.918_938_5
 }
 
+/// Entropy of a tanh-squashed Gaussian and its reparameterized derivatives.
+/// Five-point Gauss-Hermite quadrature integrates standard-normal noise. Unlike
+/// latent Gaussian entropy, this penalizes saturation of the actual controls.
+pub fn squashed_entropy(mean: f64, log_std: f64) -> (f64, f64, f64) {
+    const POINTS: [(f64, f64); 5] = [
+        (-2.8569700138728056, 0.0112574113277207),
+        (-1.355626179974266, 0.2220759220056126),
+        (0.0, 0.5333333333333333),
+        (1.355626179974266, 0.2220759220056126),
+        (2.8569700138728056, 0.0112574113277207),
+    ];
+    let sigma = log_std.exp();
+    let mut entropy = log_std + 0.5 * (std::f64::consts::TAU * std::f64::consts::E).ln();
+    let mut d_mean = 0.0;
+    let mut d_log_std = 1.0;
+    for (eps, weight) in POINTS {
+        let noise = sigma * eps;
+        let z = mean + noise;
+        // log(sech(z)^2), stable even for saturated means.
+        entropy += weight * 2.0 * (2.0_f64.ln() - z.abs() - (-2.0 * z.abs()).exp().ln_1p());
+        d_mean -= weight * 2.0 * z.tanh();
+        d_log_std -= weight * 2.0 * z.tanh() * noise;
+    }
+    (entropy, d_mean, d_log_std)
+}
+
 /// Per-layer buffers needed to differentiate one batch.
 pub struct ForwardCache {
     pub rows: usize,
@@ -56,6 +85,16 @@ pub struct ForwardCache {
     pub norm_xhat: Vec<Vec<f32>>,
     /// Per-row inverse standard deviation for each layer norm.
     pub norm_inv_std: Vec<Vec<f32>>,
+}
+
+/// Reusable inference buffers. Each caller owns its workspace, so a frozen
+/// policy can serve independent collectors without sharing mutable scratch.
+#[derive(Default)]
+pub struct InferenceWorkspace {
+    hidden: Vec<f32>,
+    normalized: Vec<f32>,
+    next: Vec<f32>,
+    output: Vec<f32>,
 }
 
 pub struct Policy {
@@ -108,6 +147,41 @@ fn dense_forward(
     pre
 }
 
+/// Independent f64 accumulators allow SIMD reduction without changing the
+/// input precision or replacing stable two-pass variance with E[x²]-E[x]².
+#[inline]
+fn normalization_moments(input: &[f32]) -> (f64, f64) {
+    let mut sums = [0.0f64; 8];
+    let mut chunks = input.chunks_exact(8);
+    for chunk in chunks.by_ref() {
+        for lane in 0..8 {
+            sums[lane] += f64::from(chunk[lane]);
+        }
+    }
+    let mut sum = sums.into_iter().sum::<f64>();
+    for &value in chunks.remainder() {
+        sum += f64::from(value);
+    }
+    let mean = sum / input.len() as f64;
+    let mut squares = [0.0f64; 8];
+    let mut chunks = input.chunks_exact(8);
+    for chunk in chunks.by_ref() {
+        for lane in 0..8 {
+            let difference = f64::from(chunk[lane]) - mean;
+            squares[lane] += difference * difference;
+        }
+    }
+    let mut squared_sum = squares.into_iter().sum::<f64>();
+    for &value in chunks.remainder() {
+        let difference = f64::from(value) - mean;
+        squared_sum += difference * difference;
+    }
+    (
+        mean,
+        1.0 / (squared_sum / input.len() as f64 + NORM_EPSILON).sqrt(),
+    )
+}
+
 /// `x = (h - mean) / sqrt(var + eps)`, `y = x * gamma + beta`.
 fn norm_forward(
     input: &[f32],
@@ -125,16 +199,7 @@ fn norm_forward(
     let mut out = vec![0f32; rows * width];
     for row in 0..rows {
         let slice = &input[row * width..(row + 1) * width];
-        let mean = slice.iter().map(|v| f64::from(*v)).sum::<f64>() / width as f64;
-        let var = slice
-            .iter()
-            .map(|v| {
-                let d = f64::from(*v) - mean;
-                d * d
-            })
-            .sum::<f64>()
-            / width as f64;
-        let inv = 1.0 / (var + NORM_EPSILON).sqrt();
+        let (mean, inv) = normalization_moments(slice);
         inv_std[row] = inv as f32;
         for unit in 0..width {
             let x = (f64::from(slice[unit]) - mean) * inv;
@@ -297,7 +362,79 @@ impl Policy {
     }
 
     pub fn forward(&self, obs: &[f32], rows: usize) -> Vec<f32> {
-        self.forward_inner(obs, rows, None)
+        let mut workspace = InferenceWorkspace::default();
+        self.forward_into(obs, rows, &mut workspace);
+        workspace.output
+    }
+
+    /// Inference without backward caches or per-layer allocation. The returned
+    /// five outputs per row remain valid until this workspace is reused.
+    pub fn forward_into<'a>(
+        &self,
+        obs: &[f32],
+        rows: usize,
+        workspace: &'a mut InferenceWorkspace,
+    ) -> &'a [f32] {
+        assert_eq!(obs.len(), rows * self.obs_dim, "observation batch shape");
+        let width = self.width;
+        let dense_into = |input: &[f32], layer: usize, output: &mut Vec<f32>| {
+            let (w, b) = self.dense_slots(layer);
+            let input_width = if layer == 0 { self.obs_dim } else { width };
+            let output_width = if layer == self.blocks + 1 {
+                self.outputs_per_row()
+            } else {
+                width
+            };
+            crate::matrix::product_into(
+                input,
+                &self.params[w],
+                rows,
+                output_width,
+                input_width,
+                false,
+                true,
+                output,
+            );
+            for row in output.chunks_exact_mut(output_width) {
+                for (value, bias) in row.iter_mut().zip(&self.params[b]) {
+                    *value += bias;
+                }
+            }
+        };
+        let normalize_into = |input: &[f32], norm: usize, output: &mut Vec<f32>| {
+            let (gamma, beta) = self.norm_slots(norm);
+            output.resize(rows * width, 0.0);
+            for (input, output) in input
+                .chunks_exact(width)
+                .zip(output.chunks_exact_mut(width))
+            {
+                let (mean, inverse) = normalization_moments(input);
+                for (unit, (value, slot)) in input.iter().zip(output).enumerate() {
+                    *slot =
+                        ((f64::from(*value) - mean) * inverse * f64::from(self.params[gamma][unit])
+                            + f64::from(self.params[beta][unit])) as f32;
+                }
+            }
+        };
+        dense_into(obs, 0, &mut workspace.hidden);
+        for value in &mut workspace.hidden {
+            *value = leaky(*value);
+        }
+        for block in 0..self.blocks {
+            normalize_into(&workspace.hidden, block, &mut workspace.normalized);
+            dense_into(&workspace.normalized, block + 1, &mut workspace.next);
+            for (next, previous) in workspace.next.iter_mut().zip(&workspace.hidden) {
+                *next = *previous + leaky(*next);
+            }
+            std::mem::swap(&mut workspace.hidden, &mut workspace.next);
+        }
+        normalize_into(&workspace.hidden, self.blocks, &mut workspace.normalized);
+        dense_into(
+            &workspace.normalized,
+            self.blocks + 1,
+            &mut workspace.output,
+        );
+        &workspace.output
     }
 
     pub fn forward_cached(&self, obs: &[f32], rows: usize) -> (Vec<f32>, ForwardCache) {
@@ -803,6 +940,55 @@ impl Clone for Policy {
             blocks: self.blocks,
             act_dim: self.act_dim,
             params: self.params.clone(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod moment_tests {
+    use super::*;
+
+    #[test]
+    fn vectorizable_moments_match_scalar_for_tails_offsets_and_cancellation() {
+        for width in [1, 7, 8, 15, 256, 257] {
+            let mut cases = vec![vec![0.0; width], vec![1e8; width]];
+            for offset in [0.0, 1e5, 1e20] {
+                cases.push(
+                    (0..width)
+                        .map(|i| (i as f32 * 0.37).sin() * 3.0 + offset)
+                        .collect(),
+                );
+            }
+            cases.push(
+                (0..width)
+                    .map(|i| match i % 3 {
+                        0 => f32::MAX,
+                        1 => -f32::MAX,
+                        _ => 1.0,
+                    })
+                    .collect(),
+            );
+            for input in cases {
+                let mean = input.iter().map(|x| f64::from(*x)).sum::<f64>() / width as f64;
+                let variance = input
+                    .iter()
+                    .map(|x| {
+                        let d = f64::from(*x) - mean;
+                        d * d
+                    })
+                    .sum::<f64>()
+                    / width as f64;
+                let inverse = 1.0 / (variance + NORM_EPSILON).sqrt();
+                let (actual_mean, actual_inverse) = normalization_moments(&input);
+                assert!(actual_mean.is_finite() && actual_inverse.is_finite());
+                assert!(((actual_mean - mean) * inverse).abs() < 1e-12);
+                assert!((actual_inverse - inverse).abs() <= inverse.abs() * 1e-12);
+                for value in input {
+                    let expected = ((f64::from(value) - mean) * inverse) as f32;
+                    let actual = ((f64::from(value) - actual_mean) * actual_inverse) as f32;
+                    assert!((actual - expected).abs() < 1e-6);
+                }
+            }
         }
     }
 }
