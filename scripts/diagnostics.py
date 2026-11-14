@@ -21,7 +21,7 @@ def timestamp(text):
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
-REFERENCE_FIELDS = ('parent', 'session', 'worker', 'command', 'old_session')
+REFERENCE_FIELDS = ('parent', 'session', 'command', 'old_session', 'race', 'previous_course')
 
 
 def records(stream):
@@ -171,6 +171,9 @@ def main(argv=None):
                     if args.operation is not None:
                         data = row.get('data', {})
                         refs = [row.get('operation')] + [data.get(key) for key in REFERENCE_FIELDS]
+                        # A rollout's worker is a numeric index, not an operation ID.
+                        if row['event'] not in ('rollout_started', 'rollout_finished'):
+                            refs.append(data.get('worker'))
                         if not any(type(ref) is int and ref == args.operation for ref in refs):
                             continue
                     output(dict(row, _source=f'{path.name}:{line_no}'))

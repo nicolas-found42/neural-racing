@@ -76,7 +76,7 @@ impl Learning {
         emit!(
             "worker_requested",
             diagnostic_id,
-            json!({"seed":seed,"speed":speed,"uncapped":speed.is_infinite(),
+            json!({"parent":neural_racing_diagnostics::current_operation(),"seed":seed,"speed":speed,"uncapped":speed.is_infinite(),
             "track":neural_racing_engine::diagnostics::track(&track)})
         );
         let latest = Arc::new(Mutex::new(None));
@@ -257,7 +257,8 @@ impl Learning {
         emit!(
             "command_requested",
             id,
-            json!({"worker":self.diagnostic_id,"name":command.name(),"data":command.fields()})
+            json!({"parent":neural_racing_diagnostics::current_operation(),"worker":self.diagnostic_id,
+            "name":command.name(),"data":command.fields()})
         );
         if self.sender.send((id, Instant::now(), command)).is_err() {
             emit!(

@@ -201,7 +201,8 @@ impl App {
             "race_restarted",
             self.race.diagnostic_id,
             json!({"mode":format!("{:?}",self.mode),"seed":seed,
-            "track":neural_racing_engine::diagnostics::track(&self.race.env.track),"new_track":new_track})
+            "track":neural_racing_engine::diagnostics::track(&self.race.env.track),"new_track":new_track,
+            "parent":neural_racing_diagnostics::current_operation()})
         );
         self.restart_timer = 0.0;
         self.accumulator = 0.0;
@@ -245,6 +246,8 @@ impl App {
     }
 
     fn apply(&mut self, action: UiAction) {
+        let operation = neural_racing_diagnostics::operation();
+        let _context = neural_racing_diagnostics::context(operation);
         let action_name = match &action {
             UiAction::TogglePause => "pause",
             UiAction::Restart => "restart",
@@ -252,8 +255,23 @@ impl App {
             UiAction::SetSpeed(_) => "speed",
             UiAction::SetMode(_) => "mode",
             UiAction::SelectCircuit(_) => "track",
-            _ => "display",
+            UiAction::ToggleOverview => "overview",
+            UiAction::Follow(_) => "follow",
+            UiAction::ToggleRays => "rays",
+            UiAction::ToggleTrail => "trail",
         };
+        emit!(
+            "ui_control_requested",
+            operation,
+            json!({"action":action_name,"mode":format!("{:?}",self.mode),
+            "race":self.race.diagnostic_id,
+            "requested_circuit":if let UiAction::SelectCircuit(circuit) = &action {
+                Some(circuit.map(|c|c.slug()).unwrap_or("procedural"))
+            } else { None },
+            "requested_mode":if let UiAction::SetMode(mode) = &action {
+                Some(format!("{mode:?}"))
+            } else { None }})
+        );
         match action {
             UiAction::SelectCircuit(circuit) => self.select_circuit(circuit),
             UiAction::ToggleOverview => self.overview = !self.overview,
@@ -327,10 +345,11 @@ impl App {
         }
         emit!(
             "ui_control",
-            0,
+            operation,
             json!({"action":action_name,"mode":format!("{:?}",self.mode),
             "paused":self.paused,"speed":self.speed,"uncapped":self.maximum_speed,
-            "circuit":self.circuit.map(|c|c.slug()).unwrap_or("procedural")})
+            "race":self.race.diagnostic_id,"overview":self.overview,"followed":self.followed,
+            "rays":self.show_rays,"trail":self.show_trail,"circuit":self.circuit.map(|c|c.slug()).unwrap_or("procedural")})
         );
     }
 
@@ -1273,6 +1292,9 @@ impl App {
 
 /// Locates a saved policy: explicit path, then the repo's `models` directory.
 pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
+    let lookup = neural_racing_diagnostics::operation();
+    let _context = neural_racing_diagnostics::context(lookup);
+    let explicit_supplied = explicit.is_some();
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(path) = explicit {
         candidates.push(path);
@@ -1281,8 +1303,23 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
     candidates.push(repo_models.join("policy.bin"));
     candidates.push(repo_models.join("best.bin"));
     candidates.push(PathBuf::from("models/policy.bin"));
+    emit!(
+        "watch_policy_lookup",
+        lookup,
+        json!({"explicit":explicit_supplied,"candidates":candidates.len()})
+    );
     for (index, candidate) in candidates.iter().enumerate() {
-        if candidate.exists() {
+        let attempt = neural_racing_diagnostics::operation();
+        let _context = neural_racing_diagnostics::context(attempt);
+        // try_exists retains permission errors without changing the previous fallback.
+        let exists = candidate.try_exists();
+        emit!(
+            "watch_policy_candidate",
+            attempt,
+            json!({"parent":lookup,"candidate_index":index,"exists":exists.as_ref().ok(),
+            "error_kind":exists.as_ref().err().map(|error|format!("{:?}",error.kind()))})
+        );
+        if exists.unwrap_or(false) {
             if let Ok(policy) = Policy::load(candidate) {
                 if policy.obs_dim == neural_racing_core::OBS_DIM
                     && policy.width == DEFAULT_WIDTH
@@ -1290,14 +1327,14 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
                 {
                     emit!(
                         "watch_policy_selected",
-                        0,
+                        attempt,
                         json!({"candidate_index":index,"obs_dim":policy.obs_dim})
                     );
                     return (Some(policy), candidate.clone());
                 }
                 emit!(
                     "watch_policy_incompatible",
-                    0,
+                    attempt,
                     json!({"candidate_index":index,"obs_dim":policy.obs_dim,"width":policy.width,"blocks":policy.blocks})
                 );
             }
@@ -1305,7 +1342,7 @@ pub fn find_policy(explicit: Option<PathBuf>) -> (Option<Policy>, PathBuf) {
     }
     emit!(
         "watch_policy_unavailable",
-        0,
+        lookup,
         json!({"candidates":candidates.len()})
     );
     (None, candidates[0].clone())
