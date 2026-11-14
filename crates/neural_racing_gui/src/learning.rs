@@ -17,7 +17,7 @@ pub struct Snapshot {
     pub diagnostic_id: u64,
     pub cars: [Env; CAR_COUNT],
     pub trails: [Vec<Vec2>; CAR_COUNT],
-    pub stats: [CircuitStats; 4],
+    pub stats: Vec<CircuitStats>,
     pub policy: Arc<Policy>,
     pub ends: [Option<EndReason>; CAR_COUNT],
     pub updates: u64,
@@ -25,6 +25,8 @@ pub struct Snapshot {
     pub decisions: u64,
     pub last_update: Option<UpdateStats>,
     pub achieved_speed: f64,
+    pub curriculum: Option<(usize, usize, bool)>,
+    pub closed_route: bool,
     pub paused: bool,
     pub revision: u64,
     pub error: Option<String>,
@@ -209,8 +211,10 @@ impl Learning {
                             cars: trainer.cars.clone(),
                             trails: std::array::from_fn(|i| trails[i].iter().copied().collect()),
                             stats: trainer.stats.clone(),
+                            closed_route: trainer.cars[0].track.closed,
                             policy: policy.clone(),
                             ends: trainer.last_end,
+                            curriculum: trainer.curriculum.as_ref().map(|c| (c.mastered(),c.corner_count(),c.stint_ready())),
                             updates: trainer.updates,
                             episodes: trainer.episodes,
                             decisions: trainer.decisions,
@@ -344,9 +348,13 @@ mod tests {
         assert_eq!(still.cars[0].position(), paused.cars[0].position());
         worker.speed(f64::INFINITY);
         worker.running(true);
-        let trained = wait_for(&worker, |s| s.updates >= 1);
+        // PPO can reject the first update. Wait for learning to change the
+        // weights rather than treating an attempted update as an accepted one.
+        let trained = wait_for(&worker, |s| {
+            s.updates >= 1 && s.policy.params() != paused.policy.params()
+        });
         assert!(trained.decisions > paused.decisions);
-        assert_ne!(trained.policy.params(), paused.policy.params());
+        assert!(trained.policy.params() != paused.policy.params());
         worker.running(false);
         let before_switch = wait_for(&worker, |s| s.paused);
         worker.track(Circuit::Silverstone.build());

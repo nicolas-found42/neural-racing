@@ -1,0 +1,142 @@
+{
+  "code": "GT4_BMW_0003",
+  "blender_version": "5.2.2 LTS",
+  "bounds": [
+    [
+      -0.9570232033729553,
+      -2.3995256423950195,
+      -0.06329458951950073
+    ],
+    [
+      0.9570232033729553,
+      2.2205052375793457,
+      1.2480107545852661
+    ]
+  ],
+  "ortho_scale": 4.769063949584961,
+  "mesh_count": 9,
+  "elapsed_seconds": 1.3649830000358634,
+  "objects": [
+    "body",
+    "wheel_front_left",
+    "wheel_front_right",
+    "tire_front_left",
+    "tire_front_right",
+    "wheel_rear_left",
+    "wheel_rear_right",
+    "tire_rear_left",
+    "tire_rear_right"
+  ],
+  "front_wheel_groups": [
+    {
+      "side": "left",
+      "pivot": [
+        -0.8040000200271606,
+        1.3654999732971191,
+        0.2581000030040741
+      ],
+      "objects": [
+        "wheel_front_left",
+        "tire_front_left"
+      ]
+    },
+    {
+      "side": "right",
+      "pivot": [
+        0.8040000200271606,
+        1.3654999732971191,
+        0.2581000030040741
+      ],
+      "objects": [
+        "wheel_front_right",
+        "tire_front_right"
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "angle_degrees": -60,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-060.png"
+    },
+    {
+      "angle_degrees": -50,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-050.png"
+    },
+    {
+      "angle_degrees": -40,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-040.png"
+    },
+    {
+      "angle_degrees": -30,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-030.png"
+    },
+    {
+      "angle_degrees": -20,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-020.png"
+    },
+    {
+      "angle_degrees": -10,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer-010.png"
+    },
+    {
+      "angle_degrees": 0,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source.png"
+    },
+    {
+      "angle_degrees": 10,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+010.png"
+    },
+    {
+      "angle_degrees": 20,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+020.png"
+    },
+    {
+      "angle_degrees": 30,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+030.png"
+    },
+    {
+      "angle_degrees": 40,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+040.png"
+    },
+    {
+      "angle_degrees": 50,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+050.png"
+    },
+    {
+      "angle_degrees": 60,
+      "path": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source-steer+060.png"
+    }
+  ],
+  "experiment": {
+    "code": "GT4_BMW_0003",
+    "model": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-scenes/GT4_BMW_0003.glb",
+    "output": "/Users/nicolas/Documents/github/oversteer/artifacts/carmodels-research/sprites/viewer-bakes/GT4_BMW_0003-source.png",
+    "forward_axis": 2,
+    "forward_sign": -1,
+    "pixels": 512,
+    "frame_pixels": 256,
+    "samples": 16,
+    "material_mode": "ao_untextured",
+    "source_profile": "viewer",
+    "refinement_sha256": "49a491a35da31ef0fba174ca51e0ad35cf3bf2954a31e7b3ff1859d6004d9ea9",
+    "exclude_steering_control": true,
+    "pose_angles": [
+      -60,
+      -50,
+      -40,
+      -30,
+      -20,
+      -10,
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60
+    ],
+    "source_sha256": "4960a33eaa69cb50e2ff4894a22c922df86880374f85b3271f0f555e93f283c2",
+    "filtered_sha256": "30be6a5dfcfd40e91e597dfa4880df510b383ccfadefe309c4966f0522abc088",
+    "worker_sha256": "dc852b4c90069c0da285ae9a51239f6331180e7ae0cf6f20d7fc6e347c746274"
+  }
+}

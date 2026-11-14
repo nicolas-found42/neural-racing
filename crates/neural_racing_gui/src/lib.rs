@@ -2,6 +2,7 @@
 //! trained policy's activations while it races.
 
 pub mod app;
+pub mod ground_tiles;
 pub mod palette;
 pub mod render;
 pub mod sim;

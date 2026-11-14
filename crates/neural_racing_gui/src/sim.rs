@@ -182,10 +182,14 @@ impl RaceView {
             Some(action) => action,
             None => match policy {
                 Some(policy) => {
-                    let action = policy.mean_action(&self.env.obs);
-                    Action {
-                        steer: f64::from(action[0]),
-                        throttle: f64::from(action[1]),
+                    if self.env.steps % neural_racing_ml::CONTROL_HOLD as i32 == 0 {
+                        let action = policy.mean_action(&self.env.obs);
+                        Action {
+                            steer: f64::from(action[0]),
+                            throttle: f64::from(action[1]),
+                        }
+                    } else {
+                        self.env.last_action
                     }
                 }
                 None => Action {

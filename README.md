@@ -2,11 +2,15 @@
 
 A top-down racing game in Rust with three real Grand Prix circuits: **Monza
 (5.793 km), Silverstone (5.891 km), and the Red Bull Ring (4.326 km)**. The car
-uses the BMW M4 GT3's 5.020 × 2.040 m footprint and 2.917 m wheelbase as its scale
-reference. A follow camera keeps the car visible; press **V** for the whole layout.
-The circuit menu also offers the original seeded procedural training courses.
+uses the BMW M3 GTR Race Car ’01 sprite, a 4.619 × 1.879 m body and 2.731 m
+wheelbase. The sprite's original camera scale preserves its mirrors and asymmetric
+origin; see [visual calibration](docs/reference/gt4/car-visual-scale.md).
+A follow camera keeps the car visible; press **V** for the whole layout.
+The circuit menu also offers recovered GT4 courses and the original seeded
+procedural training courses. GT4 layouts preserve original road geometry,
+elevation and numeric surfaces; see the [course integration](docs/gt4-course-integration.md).
 
-The car uses four-wheel vehicle physics with tire grip, weight transfer and eleven
+The car uses four-wheel vehicle physics with tire grip, weight transfer and 44
 distance sensors. The app opens into **live learning from scratch**: four cars
 share one residual MLP and learn from the attempts you see on the selected circuit.
 
@@ -32,6 +36,14 @@ cargo run --release -p neural_racing_gui
 | `1`–`4` | speed shortcuts (1×, 2×, 4×, 8×) |
 | Arrows / `WASD` | drive in Manual mode |
 
+Manual driving runs at real time. Hold Up / W to accelerate, Down / S to brake,
+and Left / Right or A / D to steer; release steering to straighten the wheels.
+Steering retains useful cornering authority at speed. Active steering and pedal
+assistance respond to developing rear slip; ordinary turns keep full power.
+The engine uses a torque curve and automatic gearing. These same controls and
+physics apply to the learning cars. Brake for tight corners and keep within the
+road. See the [GT4 port and handling checks](docs/gt4-physics-port.md).
+
 The default is Learn on Monza at 1×. The speed slider controls physics and learning
 throughput together. All four cars remain live at every speed; rendering consumes
 the newest actual training states without a replay queue. At high speed many fixed
@@ -40,9 +52,13 @@ per-car simulated time divided by wall time, including model-update overhead.
 It automatically falls below the requested setting when the computer cannot keep up.
 
 Choose which car to follow, or press **V** for the overview. Ghosts and the minimap
-show the other three cars. Practice starts are distributed around the selected circuit so the model meets
-different corners sooner. Each attempt targets **five consecutive laps**. An attempt
-ends after the fifth lap, leaving the road,
+show the other three cars. Training starts with corner sections and unlocks
+longer approaches after repeated successful exits. Mastered corners receive
+review attempts; failures can return them to practice. Closed courses then
+progress to full laps and **five consecutive laps**. Section exits are counted
+separately from laps. Open courses target full routes, while Gymkhana areas
+support manual practice with no race goals. An attempt ends after its current
+section, route or stint goal, leaving the road,
 timeout, or ten simulated seconds without five metres of forward progress. The
 car restarts and learning continues until paused or the app closes.
 
@@ -60,7 +76,7 @@ Manual driving is a secondary mode. Watch model lets you inspect the current
 session's policy without exploration noise; switching out of Learn pauses training.
 
 Launch flags: `--mode train|manual|watch`, `--speed X|max` (numeric range 0.25–2000),
-`--track monza|silverstone|red-bull-ring|random`, and `--seed N` for a legacy
+`--track monza|silverstone|red-bull-ring|gt4-RESOURCE_ID|random`, and `--seed N` for a legacy
 procedural course. Explicit watch mode can still inspect the project's shipped
 policy with `--policy PATH`; fresh learning never loads it.
 
@@ -70,13 +86,13 @@ policy with `--policy PATH`; fresh learning never loads it.
 
 The four visible cars supply every training sample from the same policy version,
 each with an independent normal draw. The brain is a **normalized residual
-actor-critic with 350,725 parameters**: a 67-input observation (56 hand-set
-features plus 11 rays), five 256-unit residual blocks with layer normalization,
+actor-critic with 359,173 parameters**: a 100-input observation (56 hand-set
+features plus 44 rays), five 256-unit residual blocks with layer normalization,
 and three heads for steer, throttle/brake and state value. Exploration sigma is
 learned per state and squashed into `[0.15, 0.6]`, so it cannot collapse to a
 noise-free policy or explode into random driving. The estimator is PPO with
-GAE(`γ = 0.999`, `λ = 0.95`), advantage normalization, a clipped surrogate, an
-entropy bonus, three epochs over minibatches of 256 and gradient clipping at
+GAE(`γ = 0.999`, `λ = 0.99`), advantage normalization, a clipped surrogate, an
+entropy bonus on the actual tanh-bounded controls, three epochs over minibatches of 256 and gradient clipping at
 1.0. An update stops before a minibatch if the measured policy KL exceeds 0.02,
 and reverts the entire update to its starting parameters and Adam moments if any
 step pushes KL above 0.05. Updates collect completed attempts from all four cars,
@@ -87,16 +103,19 @@ cut at either ceiling is bootstrapped with the current value, while a terminal
 attempt is not. An attempt that makes less than five metres of progress in 200
 decisions is ended with a `-40` stall penalty, which is worse than crashing:
 parking in front of a corner must never be the return-maximising move. Every 200
-updates a deterministic 1200-decision audit records the best mean policy; if that
-policy later stalls or falls below 40% of its best progress, the parameters and a
+updates a deterministic audit of up to 900 simulated seconds records the best
+mean policy after corner mastery; if that policy later stalls or falls below 40% of its best progress, the parameters and a
 fresh Adam state are restored and the cars restart, so a late collapse cannot
 leave the lesson parked. Switching tracks discards unfinished samples without
 mixing old observations with a new policy. There is no independent demonstration
 car.
 
 A single background coordinator advances all four cars using batched inference;
-rendering runs separately. Physics stays at 120 Hz with 20 control decisions per
-simulated second, independent of speed. Work is divided into short slices and the
+rendering runs separately. Physics stays at 60 Hz with 20 environment decisions per
+simulated second, independent of speed. One sampled policy action is held for
+four decisions (200 ms); its rewards, discount and GAE account for the actual
+held duration. Version-four policy files reject earlier control cadences.
+Work is divided into short slices and the
 UI receives fresh states roughly every 16 ms. Missed wall-clock time is capped,
 so resuming or waking the computer cannot trigger an unlimited catch-up burst.
 Spatial lookups accelerate sensor queries without changing exact intersections.
@@ -118,6 +137,15 @@ or pressing 1× leaves Max mode. The worker no longer sleeps between work slices
 when it has queued work. See [capacity measurements](docs/speed-capacity.md) for
 this computer's measured limit and the distinction from a theoretical hardware limit.
 
+For a five-minute uncapped assessment that explicitly saves weights and prints
+noise-free audits each minute plus final evaluations on all three circuits:
+
+```sh
+NEURAL_RACING_DIAGNOSTICS_DIR="$PWD/.audit/assessment/diagnostics" \
+  cargo run --release -p neural_racing_engine --example learning_assessment -- \
+  300 42 monza .audit/assessment/policies
+```
+
 ## Real circuit scale and references
 
 The [reference vault](docs/reference/README.md) contains source screenshots, circuit
@@ -127,7 +155,7 @@ Geographic centerlines are projected without stretching either axis, lightly rou
 lengths. Nominal road widths are 12 m at Monza, 15 m at Silverstone, and 12.5 m at
 the Red Bull Ring; these are representative widths, not surveyed width profiles.
 Elevation, cambers, pit lanes and exact kerb placement are not modeled. The driving
-dynamics use a planar GT-style vehicle model with representative parameters;
+dynamics use recovered GT4 stock BMW M3 GTR ALMS 2001 calculations on a flat asphalt road;
 this is not a manufacturer-calibrated GT3 simulator.
 
 An independent rear-axle pursuit driver is tested for five complete laps on all
@@ -141,28 +169,21 @@ the separate legacy headless trainer continues to use procedural courses.
 
 ## Vehicle handling
 
-The body follows a planar four-contact-patch model referenced at its centre of mass.
-At low speed the rear axle rolls without lateral sliding. At higher speed, front
-and rear tire forces act at each wheel position, using that wheel's Ackermann
-angle, local velocity and normal load to produce force and yaw moment. The visible front wheels use Ackermann angles (the inside wheel turns
-farther); rear wheels remain aligned with the chassis.
+The stock GT4 BMW M3 GTR ALMS 2001 configuration has 1190 kg base mass,
+2300 kg·m² yaw inertia and a 2.731 m wheelbase. Its original engine curve,
+six-speed automatic gearbox, differential, wheel slip and compound tables drive
+four contact patches. Spring/damper travel, camber, load sensitivity, anti-roll
+response, pitch/roll, steering compliance and the original driving aids remain
+active in the shared vehicle runtime. The trail records actual positions at
+60 Hz. Holding the brake stops the car without engaging reverse. Display poses
+interpolate between control steps at viewing speeds up to 4×.
 
-Representative parameters: 1450 kg mass, 2300 kg·m² yaw inertia, 2.917 m wheelbase,
-1.35 tire friction coefficient, 390 kW wheel power and a 288 km/h speed ceiling.
-The model includes speed-limited engine force, aerodynamic drag/downforce,
-longitudinal and lateral load transfer, load-sensitive grip, transient tire-force
-buildup over a 0.45 m relaxation length, and a friction circle shared between
-braking/acceleration and cornering at each wheel. A filtered steering target feeds
-a damped rack actuator with rate and acceleration limits; pedal response is
-smoothed. The trail records actual positions at 120 Hz. Holding the brake stops the car without engaging reverse.
-At viewing speeds up to 4×, display poses interpolate between control steps;
-accelerated learning continues to show current actual states.
-
-The vehicle's mass, grip and aerodynamic coefficients are representative tuning
-values, not BMW telemetry. Suspension motion, tire temperature, track elevation
-and gearbox simulation remain outside this planar model. The standard model's
-centre-of-mass and low-speed relationships are described in the
-[CommonRoad vehicle dynamics reference](https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/MATLAB/vehiclemodels/vehicleDynamics_ST.m).
+Manual and training controls share the same analog input path at 60 Hz, with
+decisions at 20 Hz. Recovered courses use source elevations and surface
+conditions. Procedural and reference circuits use flat asphalt.
+[Extraction evidence and scope](docs/gt4-physics-port.md) describe the verified
+vehicle functions. Policy format 4 requires fresh weights from the current
+vehicle and control cadence.
 
 ![Visible front-wheel steering](docs/screenshots/front-wheel-steering.png)
 
@@ -249,10 +270,12 @@ sample, so the road, kerbs, checkpoint gates, ray casting and the off-track test
 use the local width rather than a constant. A car that drifts more than the local
 half width from the centerline is off the road.
 
-Sensors are eleven rays in a ±108° fan with a 70 m range, square-root
-compressed to preserve resolution near road edges. The 67-value observation has
-56 state and road-preview features followed by the eleven ray distances. It
-includes speed, slip, yaw rate, steering angle and rate, applied pedal, lateral
+Sensors are 44 evenly spaced rays in a ±108° fan with a 70 m range, square-root
+compressed to preserve resolution near road edges. The 100-value observation has
+56 state and road-preview features followed by the 44 ray distances. Policies
+trained with the earlier 11-ray, 67-input observation are incompatible with this
+input shape. The observation includes speed, slip, yaw rate, steering angle and
+rate, applied pedal, lateral
 position, heading alignment, road previews at 12 m and 35 m, heading change over
 20 m, and how tight the next 60 m is. Additional inputs expose previous commands,
 their first and second differences, steering target, longitudinal/lateral and yaw

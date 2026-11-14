@@ -40,7 +40,7 @@ fn main() -> eframe::Result<()> {
             }
             "--help" | "-h" => {
                 println!(
-                    "neural-racing [--policy PATH] [--seed N] [--mode watch|manual|train] [--speed X|max] [--track monza|silverstone|red-bull-ring|random]"
+                    "neural-racing [--policy PATH] [--seed N] [--mode watch|manual|train] [--speed X|max] [--track COURSE_SLUG|random]"
                 );
                 return Ok(());
             }
@@ -70,9 +70,7 @@ fn main() -> eframe::Result<()> {
             let mut application = App::new(loaded, path);
             application.configure(seed, mode, speed);
             if let Some(name) = circuit.as_deref() {
-                let selected = neural_racing_core::Circuit::ALL
-                    .into_iter()
-                    .find(|c| c.slug() == name);
+                let selected = neural_racing_core::Circuit::lookup(name);
                 assert!(
                     selected.is_some() || name == "random",
                     "unknown track {name}"

@@ -9,13 +9,13 @@ description = "Neural Racing desktop game: random tracks, a live driving AI, and
 neural_racing_diagnostics = { path = "../neural_racing_diagnostics" }
 eframe = "0.37"
 egui = "0.37"
+image = { version = "0.25", default-features = false, features = ["png"] }
 neural_racing_core = { path = "../neural_racing_core" }
 neural_racing_ml = { path = "../neural_racing_ml" }
 neural_racing_engine = { path = "../neural_racing_engine" }
 
 [dev-dependencies]
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
 
 [[bin]]
 name = "neural-racing"

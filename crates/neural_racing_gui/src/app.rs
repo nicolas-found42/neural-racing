@@ -52,6 +52,8 @@ enum UiAction {
 pub struct App {
     mode: Mode,
     circuit: Option<Circuit>,
+    course_filter: String,
+    car_sprite: Option<render::CarSprite>,
     overview: bool,
     followed: usize,
     policy: Option<Policy>,
@@ -98,6 +100,8 @@ impl App {
         Self {
             mode: Mode::Train,
             circuit: Some(Circuit::Monza),
+            course_filter: String::new(),
+            car_sprite: None,
             overview: false,
             followed: 0,
             policy,
@@ -149,8 +153,23 @@ impl App {
         );
     }
 
+    fn practice_selected(&self) -> bool {
+        self.circuit.is_some_and(Circuit::is_practice)
+    }
+
+    fn enter_practice(&mut self) {
+        if self.practice_selected() {
+            self.mode = Mode::Manual;
+            if let Some(session) = &self.training {
+                session.worker.running(false);
+            }
+        }
+    }
+
     pub fn select_circuit(&mut self, circuit: Option<Circuit>) {
         self.circuit = circuit;
+        self.status.clear();
+        self.enter_practice();
         self.best_lap = None;
         self.restart(false);
         self.sync_training_track();
@@ -189,8 +208,9 @@ impl App {
         };
         if let Some(circuit) = self.circuit {
             if new_track {
-                let index = Circuit::ALL.iter().position(|c| *c == circuit).unwrap();
-                self.circuit = Some(Circuit::ALL[(index + 1) % Circuit::ALL.len()]);
+                let courses = Circuit::all();
+                let index = courses.iter().position(|c| *c == circuit).unwrap_or(0);
+                self.circuit = Some(courses[(index + 1) % courses.len()]);
                 self.best_lap = None;
             }
             self.race = RaceView::on_circuit(self.circuit.unwrap(), DEFAULT_LAPS);
@@ -209,6 +229,10 @@ impl App {
     }
 
     fn sync_training_track(&mut self) {
+        self.enter_practice();
+        if self.practice_selected() {
+            return;
+        }
         if let Some(session) = self.training.as_mut() {
             session.worker.track(self.race.env.track.clone());
             session.latest = None;
@@ -323,6 +347,10 @@ impl App {
             UiAction::ToggleRays => self.show_rays = !self.show_rays,
             UiAction::ToggleTrail => self.show_trail = !self.show_trail,
             UiAction::SetMode(mode) => {
+                if self.practice_selected() && mode != Mode::Manual {
+                    self.status = "Practice areas support manual driving. Select a race route to learn or watch.".into();
+                    return;
+                }
                 if mode == Mode::Watch {
                     if let Some(snapshot) = self.training_stats() {
                         self.policy = Some((*snapshot.policy).clone());
@@ -354,6 +382,9 @@ impl App {
     }
 
     fn start_training(&mut self) {
+        if self.practice_selected() {
+            return;
+        }
         let track = self.race.env.track.clone();
         let seed = self.next_seed();
         let worker = Learning::start(
@@ -523,7 +554,8 @@ impl App {
                 ] {
                     let selected = self.mode == mode;
                     if ui
-                        .add(
+                        .add_enabled(
+                            !self.practice_selected() || mode == Mode::Manual,
                             egui::Button::new(RichText::new(label).size(13.0).color(if selected {
                                 colors::DARK
                             } else {
@@ -549,6 +581,7 @@ impl App {
     fn race_section(&self, ui: &mut Ui, race: &RaceView) {
         ui.horizontal(|ui| {
             let (label, color) = match race.outcome {
+                None if self.practice_selected() => ("PRACTICE", colors::ACCENT),
                 None => ("RACING", colors::ACCENT),
                 Some(Outcome::Finished { .. }) => ("FINISHED", colors::GOOD),
                 Some(Outcome::Crashed { .. }) => ("OFF TRACK", colors::BAD),
@@ -581,27 +614,54 @@ impl App {
             });
         });
 
-        widgets::stat_row(
-            ui,
-            "Lap",
-            &format!("{} / {}", race.laps_done.min(race.env.laps), race.env.laps),
-            colors::TEXT,
-        );
+        if self.practice_selected() {
+            ui.label("Practice area · manual driving");
+            ui.label("No laps, checkpoint rewards or race finish.");
+            widgets::stat_row(
+                ui,
+                "Practice time",
+                &format!("{:.2}s", race.elapsed()),
+                colors::TEXT,
+            );
+            return;
+        }
+        if race.env.track.closed {
+            widgets::stat_row(
+                ui,
+                "Lap",
+                &format!("{} / {}", race.laps_done.min(race.env.laps), race.env.laps),
+                colors::TEXT,
+            );
+        } else {
+            let progress = if race.env.lap_done {
+                1.0
+            } else {
+                (race.env.distance / race.env.track.lap_length).clamp(0.0, 1.0)
+            };
+            widgets::stat_row(
+                ui,
+                "Route progress",
+                &format!("{:.1}%", progress * 100.0),
+                colors::TEXT,
+            );
+        }
         widgets::stat_row(
             ui,
             "Race time",
             &format!("{:.2}s", race.elapsed()),
             colors::TEXT,
         );
-        widgets::stat_row(
-            ui,
-            "Best lap",
-            &race
-                .best_lap()
-                .map(|lap| format!("{lap:.2}s"))
-                .unwrap_or_else(|| "—".to_string()),
-            colors::GOOD,
-        );
+        if race.env.track.closed {
+            widgets::stat_row(
+                ui,
+                "Best lap",
+                &race
+                    .best_lap()
+                    .map(|lap| format!("{lap:.2}s"))
+                    .unwrap_or_else(|| "—".to_string()),
+                colors::GOOD,
+            );
+        }
 
         let gates = race.gates_total().max(1);
         ui.add(
@@ -615,7 +675,7 @@ impl App {
         );
     }
 
-    fn control_section(&self, ui: &mut Ui, actions: &mut Vec<UiAction>) {
+    fn control_section(&mut self, ui: &mut Ui, actions: &mut Vec<UiAction>) {
         egui::ComboBox::from_label("Circuit")
             .selected_text(
                 self.circuit
@@ -623,14 +683,61 @@ impl App {
                     .unwrap_or("Procedural course"),
             )
             .show_ui(ui, |ui| {
-                for circuit in Circuit::ALL {
-                    if ui
-                        .selectable_label(self.circuit == Some(circuit), circuit.name())
-                        .clicked()
-                    {
-                        actions.push(UiAction::SelectCircuit(Some(circuit)));
-                    }
-                }
+                ui.text_edit_singleline(&mut self.course_filter);
+                let filter = self.course_filter.to_lowercase();
+                egui::ScrollArea::vertical()
+                    .max_height(280.0)
+                    .show(ui, |ui| {
+                        for &circuit in Circuit::all() {
+                            if !filter.is_empty()
+                                && !circuit.name().to_lowercase().contains(&filter)
+                                && !circuit.slug().to_lowercase().contains(&filter)
+                            {
+                                continue;
+                            }
+                            if ui
+                                .selectable_label(
+                                    self.circuit == Some(circuit),
+                                    match circuit {
+                                        Circuit::Gt4(_) => {
+                                            format!(
+                                                "{} · {}{}",
+                                                circuit.name(),
+                                                circuit.slug(),
+                                                if circuit.is_practice() {
+                                                    " · Manual practice"
+                                                } else {
+                                                    ""
+                                                }
+                                            )
+                                        }
+                                        _ => circuit.name().to_owned(),
+                                    },
+                                )
+                                .clicked()
+                            {
+                                actions.push(UiAction::SelectCircuit(Some(circuit)));
+                            }
+                        }
+                        for course in neural_racing_core::course_catalog::courses()
+                            .iter()
+                            .filter(|c| !c.available)
+                        {
+                            if !filter.is_empty()
+                                && !course.name.to_lowercase().contains(&filter)
+                                && !course.id.to_lowercase().contains(&filter)
+                            {
+                                continue;
+                            }
+                            ui.add_enabled(
+                                false,
+                                egui::Label::new(format!(
+                                    "{} · {:?}",
+                                    course.name, course.topology
+                                )),
+                            );
+                        }
+                    });
                 if self.mode != Mode::Train
                     && ui
                         .selectable_label(self.circuit.is_none(), "Procedural course")
@@ -639,6 +746,27 @@ impl App {
                     actions.push(UiAction::SelectCircuit(None));
                 }
             });
+        if let Some(Circuit::Gt4(index)) = self.circuit {
+            use neural_racing_core::course_catalog::{CourseCondition, CourseTopology};
+            let course = &neural_racing_core::course_catalog::courses()[usize::from(index)];
+            let condition = match course.condition {
+                CourseCondition::Dry => "Dry",
+                CourseCondition::Wet => "Wet",
+                CourseCondition::Dirt => "Dirt",
+                CourseCondition::Snow => "Snow",
+                CourseCondition::Unknown => "Condition unknown",
+            };
+            let route = match course.topology {
+                CourseTopology::Closed => "Circuit",
+                CourseTopology::Open => "Open route",
+                CourseTopology::Area => "Manual practice",
+                _ => "Route unknown",
+            };
+            ui.label(format!("GT4 · {condition} · {route}"));
+        }
+        if self.practice_selected() {
+            ui.label("Manual practice; learning and watching resume on race routes.");
+        }
         ui.horizontal(|ui| {
             if ui
                 .button(if self.paused { "Resume" } else { "Pause" })
@@ -718,38 +846,71 @@ impl App {
 
     fn training_section(&self, ui: &mut Ui) {
         let Some(snapshot) = self.training_stats() else {
-            ui.label("Starting fresh model…");
+            ui.label("Loading learning session…");
             return;
         };
         if let Some(error) = &snapshot.error {
             ui.colored_label(colors::BAD, error);
         }
         let stats = &snapshot.stats[LiveTrainer::circuit_index(self.circuit)];
+        if let Some((mastered, total, stints)) = snapshot.curriculum {
+            let stage = if mastered < total {
+                format!("Corners {mastered}/{total}")
+            } else if !snapshot.closed_route {
+                "Full routes".into()
+            } else if stints {
+                "Five-lap stints".into()
+            } else {
+                "Full laps".into()
+            };
+            widgets::stat_row(ui, "Practice stage", &stage, colors::ACCENT);
+            widgets::stat_row(
+                ui,
+                "Safe section exits",
+                &format!("{} / {}", stats.section_successes, stats.section_attempts),
+                colors::GOOD,
+            );
+        }
         widgets::stat_row(
             ui,
             "Attempts · this circuit",
             &stats.attempts.to_string(),
             colors::TEXT,
         );
-        widgets::stat_row(ui, "Completed laps", &stats.laps.to_string(), colors::GOOD);
-        widgets::stat_row(
-            ui,
-            "Five-lap goals",
-            &stats.completed_stints.to_string(),
-            colors::GOOD,
-        );
-        widgets::stat_row(
-            ui,
-            "Best consecutive laps",
-            &format!("{} / {STINT_LAPS}", stats.best_streak),
-            colors::GOOD,
-        );
-        widgets::stat_row(
-            ui,
-            "Best lap",
-            &stats.best_lap.map_or("—".into(), |v| format!("{v:.2}s")),
-            colors::GOOD,
-        );
+        if snapshot.closed_route {
+            widgets::stat_row(ui, "Completed laps", &stats.laps.to_string(), colors::GOOD);
+            widgets::stat_row(
+                ui,
+                "Five-lap goals",
+                &stats.completed_stints.to_string(),
+                colors::GOOD,
+            );
+            widgets::stat_row(
+                ui,
+                "Best consecutive laps",
+                &format!("{} / {STINT_LAPS}", stats.best_streak),
+                colors::GOOD,
+            );
+            widgets::stat_row(
+                ui,
+                "Best lap",
+                &stats.best_lap.map_or("—".into(), |v| format!("{v:.2}s")),
+                colors::GOOD,
+            );
+        } else {
+            widgets::stat_row(
+                ui,
+                "Completed routes",
+                &stats.completed_routes.to_string(),
+                colors::GOOD,
+            );
+            widgets::stat_row(
+                ui,
+                "Best route",
+                &stats.best_route.map_or("—".into(), |v| format!("{v:.2}s")),
+                colors::GOOD,
+            );
+        }
         widgets::stat_row(
             ui,
             "Model updates · all circuits",
@@ -769,8 +930,8 @@ impl App {
             );
             widgets::stat_row(
                 ui,
-                "Exploration σ",
-                &format!("{:.2}", update.entropy.exp()),
+                "Latent exploration σ",
+                &format!("{:.2}", update.exploration_sigma),
                 colors::ACCENT,
             );
             widgets::stat_row(
@@ -791,13 +952,13 @@ impl App {
             );
             widgets::stat_row(
                 ui,
-                "Gradient norm",
-                &format!("{:.2}", update.gradient_norm),
+                "Control entropy",
+                &format!("{:.2}", update.entropy),
                 colors::MUTED,
             );
         }
         ui.label(
-            RichText::new("Distance reached per attempt")
+            RichText::new("Progress toward current practice goal")
                 .size(12.0)
                 .color(colors::MUTED),
         );
@@ -831,7 +992,11 @@ impl App {
         p.text(
             rect.left_top() + Vec2::new(5.0, 2.0),
             Align2::LEFT_TOP,
-            "100% = five consecutive laps",
+            if snapshot.closed_route {
+                "100% = current section, lap or stint"
+            } else {
+                "100% = current section or full route"
+            },
             FontId::proportional(10.0),
             colors::MUTED,
         );
@@ -845,9 +1010,13 @@ impl App {
             );
         }
         ui.label(
-            RichText::new("5-lap goal · 4 practice starts · one shared model")
-                .size(11.0)
-                .color(colors::MUTED),
+            RichText::new(if snapshot.closed_route {
+                "Corner practice, then full laps and five-lap stints"
+            } else {
+                "Corner practice, then full routes"
+            })
+            .size(11.0)
+            .color(colors::MUTED),
         );
     }
 
@@ -892,11 +1061,11 @@ impl App {
         widgets::gauge(
             ui,
             "Road width",
-            env.road_half_width * 2.0,
+            env.road_width,
             30.0,
             16.0 * UNITS_PER_METRE,
             colors::ACCENT,
-            &format!("{:.1} m", env.road_half_width * 2.0 / UNITS_PER_METRE),
+            &format!("{:.1} m", env.road_width / UNITS_PER_METRE),
         );
         widgets::centered_gauge(
             ui,
@@ -937,6 +1106,10 @@ impl App {
             }),
             _ => self.policy.as_ref(),
         };
+        if self.practice_selected() {
+            ui.label("Select a race route to learn or watch the model. Your learning session is preserved.");
+            return;
+        }
         let Some(policy) = policy else {
             ui.label(
                 RichText::new("Start learning to create a new driving model.")
@@ -973,6 +1146,13 @@ impl App {
     }
 
     fn session_section(&self, ui: &mut Ui, _actions: &mut Vec<UiAction>) {
+        if self.practice_selected() {
+            ui.label("Manual practice has no race results or lap times.");
+            if !self.status.is_empty() {
+                ui.label(&self.status);
+            }
+            return;
+        }
         widgets::stat_row(
             ui,
             "Races finished",
@@ -985,15 +1165,17 @@ impl App {
             &format!("{}", self.crashed),
             colors::BAD,
         );
-        widgets::stat_row(
-            ui,
-            "Session best lap",
-            &self
-                .best_lap
-                .map(|lap| format!("{lap:.2}s"))
-                .unwrap_or_else(|| "—".to_string()),
-            colors::GOOD,
-        );
+        if self.race.env.track.closed {
+            widgets::stat_row(
+                ui,
+                "Session best lap",
+                &self
+                    .best_lap
+                    .map(|lap| format!("{lap:.2}s"))
+                    .unwrap_or_else(|| "—".to_string()),
+                colors::GOOD,
+            );
+        }
         if !self.status.is_empty() {
             ui.add_space(4.0);
             ui.label(RichText::new(&self.status).size(11.0).color(colors::MUTED));
@@ -1004,7 +1186,14 @@ impl App {
     fn dashboard(&mut self, ui: &mut Ui) {
         let mut actions = Vec::new();
         egui::ScrollArea::vertical().show(ui, |ui| {
-            widgets::section(ui, "Race");
+            widgets::section(
+                ui,
+                if self.practice_selected() {
+                    "Practice"
+                } else {
+                    "Race"
+                },
+            );
             self.race_section(ui, self.active_race());
 
             widgets::section(ui, "Control");
@@ -1066,11 +1255,12 @@ impl App {
                     }
                     let mut ghost = painter.clone();
                     ghost.set_opacity(0.40);
-                    render::draw_car(
+                    render::draw_car_with_sprite(
                         &ghost,
                         &view,
                         &car.drawing_env(drawing_speed, self.paused),
                         car.env.off_track,
+                        self.car_sprite.as_ref(),
                     );
                     painter.text(
                         view.pos(car.env.position()) + Vec2::new(0.0, -15.0),
@@ -1083,7 +1273,13 @@ impl App {
             }
         }
         let crashed = matches!(race.outcome, Some(Outcome::Crashed { .. }));
-        render::draw_car(&painter, &view, &drawing_env, crashed);
+        render::draw_car_with_sprite(
+            &painter,
+            &view,
+            &drawing_env,
+            crashed,
+            self.car_sprite.as_ref(),
+        );
         if self.mode == Mode::Train && self.overview {
             let pos = view.pos(race.env.position());
             painter.circle_stroke(pos, 5.0, Stroke::new(1.0, colors::CAR));
@@ -1123,12 +1319,27 @@ impl App {
         painter.text(
             inner.left_top() + Vec2::new(12.0, 10.0),
             Align2::LEFT_TOP,
-            format!(
-                "LAP {} / {}   {:.1}s",
-                (race.laps_done + 1).min(race.env.laps),
-                race.env.laps,
-                race.elapsed()
-            ),
+            if self.practice_selected() {
+                format!("PRACTICE AREA   {:.1}s", race.elapsed())
+            } else if !race.env.track.closed {
+                format!(
+                    "ROUTE {:.1}%   {:.1}s",
+                    if race.env.lap_done {
+                        100.0
+                    } else {
+                        (race.env.distance / race.env.track.lap_length * 100.0).clamp(0.0, 100.0)
+                    },
+                    race.elapsed()
+                )
+            } else {
+                format!(
+                    "{} {} / {}   {:.1}s",
+                    "LAP",
+                    (race.laps_done + 1).min(race.env.laps),
+                    race.env.laps,
+                    race.elapsed()
+                )
+            },
             FontId::monospace(13.0),
             colors::TEXT,
         );
@@ -1138,7 +1349,7 @@ impl App {
             format!(
                 "{:.3} km · road {:.1} m",
                 race.env.track.lap_length / UNITS_PER_METRE / 1000.0,
-                race.env.road_half_width * 2.0 / UNITS_PER_METRE
+                race.env.road_width / UNITS_PER_METRE
             ),
             FontId::monospace(10.0),
             colors::MUTED,
@@ -1201,6 +1412,13 @@ impl EframeApp for App {
 
 impl App {
     fn frame(&mut self, ctx: &Context, ui: &mut Ui) {
+        if self.car_sprite.is_none() {
+            self.car_sprite = Some(
+                render::CarSprite::original_m3(ctx)
+                    .expect("validated existing GT4 M3 collection sprite"),
+            );
+        }
+
         let now = std::time::Instant::now();
         self.diagnostic_max_gap_ms = self
             .diagnostic_max_gap_ms
@@ -1353,6 +1571,44 @@ mod tests {
     use super::*;
     use std::time::{Duration, Instant};
 
+    #[test]
+    fn held_keyboard_turn_does_not_spin_and_manual_ignores_training_speed() {
+        for key in [Key::ArrowLeft, Key::ArrowRight, Key::A, Key::D] {
+            let mut app = App::new(None, PathBuf::new());
+            app.configure(None, Some(Mode::Manual), Some(1000.0));
+            let ctx = Context::default();
+            for tick in 0..20 {
+                let mut input = egui::RawInput::default();
+                if tick == 0 {
+                    for key in [key, Key::ArrowUp] {
+                        input.events.push(egui::Event::Key {
+                            key,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers: egui::Modifiers::NONE,
+                        });
+                    }
+                }
+                let mut output = ctx.run_ui(input, |ui| {
+                    app.advance_race(ui.ctx(), neural_racing_core::DECISION_DT as f32)
+                });
+                output.textures_delta.clear();
+                let env = &app.race.env;
+                let rear_slip = ((env.vy - neural_racing_core::WHEELBASE * 0.5 * env.yaw_rate)
+                    / env.vx.abs().max(1.0))
+                .atan()
+                .to_degrees();
+                assert!(
+                    rear_slip.abs() < 12.0,
+                    "{key:?} tick={tick}: rear slip={rear_slip}"
+                );
+                assert!(!app.race.is_over(), "{key:?} tick={tick}: left road");
+            }
+            assert_eq!(app.race.env.steps, 20, "manual stays at real time");
+        }
+    }
+
     fn wait_for(app: &mut App, predicate: impl Fn(&Snapshot) -> bool) {
         let deadline = Instant::now() + Duration::from_secs(30);
         loop {
@@ -1425,5 +1681,77 @@ mod tests {
         assert_eq!(app.training_stats().unwrap().decisions, stopped);
         app.apply(UiAction::SetMode(Mode::Train));
         wait_for(&mut app, |s| s.decisions > stopped);
+    }
+    #[test]
+    fn practice_area_preserves_the_paused_learner_and_rejects_race_modes() {
+        let area = *Circuit::all()
+            .iter()
+            .find(|c| c.is_practice())
+            .expect("published practice geometry");
+        let mut app = App::new(None, PathBuf::new());
+        app.paused = true;
+        wait_for(&mut app, |s| s.paused);
+        let weights = app.training_stats().unwrap().policy.params().to_vec();
+        let decisions = app.training_stats().unwrap().decisions;
+        let training_track = app.training_stats().unwrap().cars[0].track.circuit;
+        app.select_circuit(Some(area));
+        assert_eq!(app.mode, Mode::Manual);
+        assert!(app.paused);
+        assert!(app.race.env.track.free_roam);
+        for mode in [Mode::Train, Mode::Watch] {
+            app.apply(UiAction::SetMode(mode));
+            assert_eq!(app.mode, Mode::Manual);
+        }
+        wait_for(&mut app, |s| s.paused);
+        let snapshot = app.training_stats().unwrap();
+        assert_eq!(snapshot.decisions, decisions);
+        assert_eq!(snapshot.policy.params(), weights);
+        assert_eq!(snapshot.cars[0].track.circuit, training_track);
+    }
+    #[test]
+    fn open_route_training_hud_uses_route_goals_without_lap_or_stint_claims() {
+        let mut app = App::new(None, PathBuf::new());
+        app.paused = true;
+        app.select_circuit(Some(Circuit::lookup("gt4-testcourse_100m").unwrap()));
+        wait_for(&mut app, |s| s.paused && !s.closed_route);
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| app.training_section(ui));
+        output.textures_delta.clear();
+        let text = output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Text(t) => Some(t.galley.job.text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(text.contains("Completed routes"), "{text}");
+        assert!(text.contains("Full routes"), "{text}");
+        assert!(!text.contains("Five-lap"), "{text}");
+        assert!(!text.contains("Completed laps"), "{text}");
+    }
+    #[test]
+    fn road_width_hud_uses_both_sides_not_twice_the_nearest_edge() {
+        let mut app = App::new(None, PathBuf::new());
+        app.race.env.road_width = 20.0 * UNITS_PER_METRE;
+        app.race.env.road_half_width = 3.0 * UNITS_PER_METRE;
+        app.race.env.min_ray = 7.0 * UNITS_PER_METRE;
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            app.telemetry_section(ui, &app.race)
+        });
+        output.textures_delta.clear();
+        let text = output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Text(t) => Some(t.galley.job.text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(text.contains("20.0 m"), "{text}");
+        assert!(!text.contains("6.0 m"), "{text}");
     }
 }
