@@ -195,13 +195,14 @@ impl EvalReport {
 
 /// Races the deterministic policy over `count` unseen random tracks.
 pub fn evaluate(policy: &Policy, base_seed: u64, count: usize, laps: i32) -> EvalReport {
+    let parent = neural_racing_diagnostics::current_operation();
     let op = neural_racing_diagnostics::operation();
     let _context = neural_racing_diagnostics::context(op);
     let started = Instant::now();
     emit!(
         "evaluation_started",
         op,
-        json!({"seed":base_seed,"tracks":count,"laps":laps})
+        json!({"parent":parent,"seed":base_seed,"tracks":count,"laps":laps})
     );
     let mut rows = Vec::with_capacity(count);
     for index in 0..count {
@@ -305,12 +306,13 @@ impl Trainer {
     pub fn train_generation(&mut self) -> GenerationStats {
         let started = Instant::now();
         let generation = self.generation + 1;
+        let parent = neural_racing_diagnostics::current_operation();
         let op = neural_racing_diagnostics::operation();
         let _context = neural_racing_diagnostics::context(op);
         emit!(
             "generation_started",
             op,
-            json!({"generation":generation,"seed":self.config.seed,
+            json!({"parent":parent,"generation":generation,"seed":self.config.seed,
             "workers":self.config.workers,"episodes_per_worker":self.config.episodes_per_worker})
         );
         let policy = &self.policy;

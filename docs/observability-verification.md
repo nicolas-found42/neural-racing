@@ -283,3 +283,64 @@ tests, standalone Rust formatting check, and whole-series whitespace check also
 passed. Generated screenshots were copied into the local audit area and their
 pre-existing committed contents restored. No new performance claim is inferred
 from these regression checks.
+
+## 13 November 2026 follow-up
+
+The default local store contained 45 readable segments covering 45 runs, with no
+malformed lines. Its latest retained row was Unix ms 1793859457624. A query for
+12 November New York time (1794459600000 through 1794546000000) found zero rows.
+That window is outside the observed retained span. The earlier isolated audit
+store was still readable with 16 runs in 17 segments. Neither query establishes
+activity on another host or under another account. The accessible local macOS
+DiagnosticReports directory yielded no matching Neural Racing report by name.
+
+Reproduce the checkpoint incident with an isolated pre-existing directory as
+the output. The default seed is zero.
+
+```sh
+probe="$(mktemp -d)"
+mkdir "$probe/output"
+NEURAL_RACING_DIAGNOSTICS_DIR="$probe/evidence" cargo run -q \
+  -p neural_racing_engine --bin train -- \
+  --generations 1 --workers 1 --episodes-per-worker 1 --laps 1 \
+  --eval-every 1 --eval-tracks 1 --out "$probe/output"
+python3 scripts/diagnostics.py --dir "$probe/evidence" --summary
+python3 scripts/diagnostics.py --dir "$probe/evidence" --limit 10000
+```
+
+The same scenario on the source of `ce51d49` exited 101. Retained run
+`1794632220214-16319-1` had generation 2, evaluation 3 and checkpoint 4 as
+operation IDs without a shared cycle. The evidence already identified the I/O
+kind `IsADirectory`. In follow-up run `1794632169936-15643-1`, the training
+operation 2 linked cycle 3 to completed generation 4 and evaluation 5, then to
+failed checkpoint 6 and nested save 7. The checkpoint role was `evaluation`.
+The return code was still 101. The unwind and missing train completion marker
+agree with the observed child process status. The raw output path was absent
+from retained rows. This evidence identifies the stage and I/O response. It
+does not identify who prepared the directory or prove why it existed.
+
+With a child file as the destination, fresh run `1794632170159-15654-1`
+exited 0 with successful evaluation, best and final writes and
+`train_result.status=completed`. A separate verify process using that policy
+(`1794632170479-15662-1`) retained `verify_result.exit_code=1` and a
+non-unwinding recorder end. Its evaluation explicitly recorded one crash.
+These retrieved snapshots had zero sequence gaps, queue drops and I/O errors.
+The fixture's fresh training run is a controlled retry with corrected output,
+with no implication of resumed optimizer state.
+
+The workspace suite passed 68 tests with two opt-in performance probes ignored.
+Five Python retrieval tests passed. The Rust suite includes the existing
+worker lifecycle and recorder flood/rotation/unavailable-sink probes and the
+new failed checkpoint fixture. The source archive used for the baseline was
+compiled in a local Git repository from `git archive ce51d49`; its embedded
+revision is that local archive commit. The follow-up manual scenario used
+the pre-documentation binary. Compile-time source identity distinguishes it
+from the prior binary even when the revision was recorded before committing.
+No wall-time overhead or multi-day production retention claim is made.
+
+One subsequent workspace run reached the existing worker unit-test deadline
+while the imported-course suite was also running in another checkout. The old
+assertion did not retain its last snapshot, so the exact stage and contribution
+of contention are unknown. The test now reports the calling assertion and last
+revision, pause state, decision and update counts, worker error and liveness.
+The predicate is unchanged and has a 45-second deadline.

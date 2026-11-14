@@ -3,6 +3,7 @@
 use std::io::Write;
 use std::path::PathBuf;
 
+use neural_racing_diagnostics::{context, emit, json, operation};
 use neural_racing_engine::{evaluate, score, EvalReport, RaceConfig, Trainer};
 use neural_racing_ml::Policy;
 
@@ -86,20 +87,32 @@ fn print_eval(report: &EvalReport, tracks: usize) {
 }
 
 fn save_checkpoint(policy: &Policy, path: &std::path::Path, role: &'static str, generation: i64) {
-    let op = neural_racing_diagnostics::operation();
-    let _context = neural_racing_diagnostics::context(op);
+    let parent = neural_racing_diagnostics::current_operation();
+    let op = operation();
+    let _context = context(op);
     neural_racing_diagnostics::emit!(
         "checkpoint_started",
         op,
-        neural_racing_diagnostics::json!({"role":role,"generation":generation})
+        neural_racing_diagnostics::json!({"parent":parent,"role":role,"generation":generation})
     );
     let result = policy.save(path);
     neural_racing_diagnostics::emit!(
         "checkpoint_finished",
         op,
-        neural_racing_diagnostics::json!({"role":role,"generation":generation,"ok":result.is_ok()})
+        neural_racing_diagnostics::json!({"parent":parent,"role":role,"generation":generation,"ok":result.is_ok()})
     );
     result.expect("save policy checkpoint");
+}
+
+fn observe_setup<T>(stage: &'static str, result: std::io::Result<T>) -> std::io::Result<T> {
+    if let Err(error) = &result {
+        emit!(
+            "train_setup_error",
+            neural_racing_diagnostics::current_operation(),
+            json!({"stage":stage,"error_kind":format!("{:?}",error.kind())})
+        );
+    }
+    result
 }
 
 fn main() {
@@ -107,9 +120,11 @@ fn main() {
     let Some(args) = parse_args() else {
         return;
     };
+    let training = operation();
+    let _context = context(training);
     neural_racing_diagnostics::emit!(
         "train_config",
-        0,
+        training,
         neural_racing_diagnostics::json!({
         "seed":args.seed,"workers":args.workers,"episodes_per_worker":args.episodes_per_worker,
         "generations":args.generations,"laps":args.laps,"eval_every":args.eval_every,"eval_tracks":args.eval_tracks,"resume":args.resume.is_some()})
@@ -139,13 +154,15 @@ fn main() {
     };
 
     if let Some(parent) = args.out.parent() {
-        std::fs::create_dir_all(parent).expect("create model directory");
+        observe_setup("model_directory", std::fs::create_dir_all(parent))
+            .expect("create model directory");
     }
     let mut log = args.log.as_ref().map(|path| {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).expect("create log directory");
+            observe_setup("legacy_log_directory", std::fs::create_dir_all(parent))
+                .expect("create log directory");
         }
-        std::fs::File::create(path).expect("open log")
+        observe_setup("legacy_log_open", std::fs::File::create(path)).expect("open log")
     });
     if let Some(log) = log.as_mut() {
         writeln!(
@@ -156,7 +173,7 @@ fn main() {
         .unwrap_or_else(|error| {
             neural_racing_diagnostics::emit!(
                 "legacy_log_error",
-                0,
+                training,
                 neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})
             )
         });
@@ -177,6 +194,13 @@ fn main() {
     let eval_base: u64 = 7_000_000 + args.seed;
 
     for _ in 0..args.generations {
+        let cycle = operation();
+        let _context = context(cycle);
+        emit!(
+            "train_cycle_started",
+            cycle,
+            json!({"parent":training,"generation":trainer.generation + 1})
+        );
         let stats = trainer.train_generation();
         println!(
             "gen {:4} | eps {:3} | finished {:2} crash {:2} timeout {:2} | cp {:4.1} | dist {:6.0} | rew {:7.2} | kl {:.4} scale {:.2} | ent {:5.2} | gnorm {:5.2} | {:5.2}s",
@@ -214,7 +238,7 @@ fn main() {
                 stats.rows,
                 stats.elapsed_seconds,
             )
-            .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", 0,
+            .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", cycle,
             neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})));
         }
 
@@ -253,13 +277,23 @@ fn main() {
                     report.mean_speed,
                     report.min_wall,
                 )
-                .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", 0,
+                .unwrap_or_else(|error| neural_racing_diagnostics::emit!("legacy_log_error", cycle,
             neural_racing_diagnostics::json!({"error_kind":format!("{:?}",error.kind())})));
             }
         }
+        emit!(
+            "train_cycle_finished",
+            cycle,
+            json!({"parent":training,"generation":stats.generation,"evaluated":due})
+        );
     }
 
     save_checkpoint(&trainer.policy, &args.out, "final", trainer.generation);
+    emit!(
+        "train_result",
+        training,
+        json!({"status":"completed","generation":trainer.generation})
+    );
     println!(
         "saved {} ({} parameters) — best generation {}",
         args.out.display(),

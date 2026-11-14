@@ -49,6 +49,42 @@ class RetrievalTests(unittest.TestCase):
             self.assertFalse(result[0]['clean_end_observed'])
             self.assertIn('"malformed_or_partial_lines": 1', err)
 
+    def test_query_reports_bounds_pagination_and_unavailable_sources(self):
+        with tempfile.TemporaryDirectory() as root:
+            good = Path(root) / 'nr-r-000000.jsonl'
+            good.write_text(''.join(json.dumps(dict(schema=1, run='r', event='step',
+                seq=n, ts_ms=n * 1000, operation=4, data={})) + '\n' for n in (1, 2, 3)))
+            blocked = Path(root) / 'nr-r-000001.jsonl'
+            blocked.symlink_to(good)
+            code, rows, err = self.query(root, '--run', 'r', '--since', '1000',
+                                         '--until', '3000', '--limit', '1', '--offset', '1')
+            self.assertEqual(code, 2)
+            self.assertEqual([row['seq'] for row in rows], [2])
+            info = json.loads(err)
+            self.assertEqual(info['status'], 'partial')
+            self.assertEqual(info['next_offset'], 2)
+            self.assertEqual(info['unavailable_sources'], [
+                dict(file=blocked.name, reason='not_regular_file')])
+            self.assertEqual((info['since_ms'], info['until_ms']), (1000, 3000))
+            blocked.unlink()
+            code, rows, err = self.query(root, '--since', '4000')
+            self.assertEqual(code, 2)
+            self.assertEqual(rows, [])
+            self.assertEqual(json.loads(err)['status'], 'no_recorded_match')
+
+    def test_invalid_metadata_and_uncommitted_tail_are_excluded(self):
+        with tempfile.TemporaryDirectory() as root:
+            base = dict(schema=1, run='r', ts_ms=1000)
+            rows = [dict(base, event='segment_start', segment=0),
+                    dict(base, event='segment_start', segment='unexpected'),
+                    dict(base, event='step', seq=1, data={}, dropped_total='unexpected'),
+                    dict(base, event='process_end', seq=2, data=dict(unwinding=False))]
+            (Path(root) / 'nr-r-000000.jsonl').write_text('\n'.join(map(json.dumps, rows)))
+            code, result, err = self.query(root, '--summary')
+            self.assertEqual(code, 2)
+            self.assertFalse(result[0]['process_end_observed'])
+            self.assertEqual(json.loads(err)['malformed_or_partial_lines'], 3)
+
     def test_no_directory_is_unknown_and_timezone_is_required(self):
         code, rows, err = self.query('/nonexistent/neural-racing-evidence')
         self.assertEqual(code, 2)

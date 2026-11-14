@@ -43,9 +43,11 @@ fn main() -> std::process::ExitCode {
         }
     }
 
+    let operation = neural_racing_diagnostics::operation();
+    let _context = neural_racing_diagnostics::context(operation);
     neural_racing_diagnostics::emit!(
         "verify_config",
-        0,
+        operation,
         neural_racing_diagnostics::json!({"seed":args.seed,"tracks":args.tracks,"laps":args.laps})
     );
     let policy = Policy::load(&args.model)
@@ -54,8 +56,13 @@ fn main() -> std::process::ExitCode {
         eprintln!("This policy uses the old observation/physics format. Train a fresh model for the current vehicle dynamics.");
         neural_racing_diagnostics::emit!(
             "policy_incompatible",
-            0,
+            operation,
             neural_racing_diagnostics::json!({"actual_obs_dim":policy.obs_dim,"expected_obs_dim":neural_racing_core::OBS_DIM})
+        );
+        neural_racing_diagnostics::emit!(
+            "verify_result",
+            operation,
+            neural_racing_diagnostics::json!({"passed":false,"exit_code":2,"reason":"incompatible_observations"})
         );
         return std::process::ExitCode::from(2);
     }
@@ -103,8 +110,8 @@ fn main() -> std::process::ExitCode {
     if report.finished < args.tracks {
         neural_racing_diagnostics::emit!(
             "verify_result",
-            0,
-            neural_racing_diagnostics::json!({"passed":false,"finished":report.finished,"tracks":args.tracks})
+            operation,
+            neural_racing_diagnostics::json!({"passed":false,"exit_code":1,"finished":report.finished,"tracks":args.tracks})
         );
         return std::process::ExitCode::FAILURE;
     }
@@ -114,8 +121,8 @@ fn main() -> std::process::ExitCode {
     );
     neural_racing_diagnostics::emit!(
         "verify_result",
-        0,
-        neural_racing_diagnostics::json!({"passed":true,"tracks":args.tracks})
+        operation,
+        neural_racing_diagnostics::json!({"passed":true,"exit_code":0,"tracks":args.tracks})
     );
     std::process::ExitCode::SUCCESS
 }
